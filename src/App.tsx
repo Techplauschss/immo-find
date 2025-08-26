@@ -14,7 +14,11 @@ import {
   CssBaseline,
   CircularProgress,
   Alert,
-  Chip
+  Chip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material'
 import {
   Search,
@@ -29,6 +33,7 @@ interface Listing {
   price: string
   qm: string
   location: string
+  link: string
 }
 
 interface ApiResponse {
@@ -126,14 +131,45 @@ function App() {
   const [maxArea, setMaxArea] = useState('')
   const [minPricePerSqm, setMinPricePerSqm] = useState('')
   const [maxPricePerSqm, setMaxPricePerSqm] = useState('')
+  const [zipCode, setZipCode] = useState('')
+  const [radius, setRadius] = useState('')
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchPerformed, setSearchPerformed] = useState(false)
+  const [sortBy, setSortBy] = useState('')
+
+  const sortListings = (listingsToSort: Listing[]) => {
+    if (!sortBy) return listingsToSort
+
+    return [...listingsToSort].sort((a, b) => {
+      const priceA = parseInt(a.price.replace(/[€.,\s]/g, ''))
+      const priceB = parseInt(b.price.replace(/[€.,\s]/g, ''))
+      const qmA = parseFloat(a.qm.replace(',', '.'))
+      const qmB = parseFloat(b.qm.replace(',', '.'))
+      
+      switch (sortBy) {
+        case 'price-asc':
+          return priceA - priceB
+        case 'price-desc':
+          return priceB - priceA
+        case 'price-per-sqm-asc':
+          return (priceA / qmA) - (priceB / qmB)
+        case 'price-per-sqm-desc':
+          return (priceB / qmB) - (priceA / qmA)
+        case 'area-asc':
+          return qmA - qmB
+        case 'area-desc':
+          return qmB - qmA
+        default:
+          return 0
+      }
+    })
+  }
 
     const searchListings = async () => {
-    if (!minPrice && !maxPrice) {
-      setError('Bitte geben Sie einen Mindest- oder Maximalpreis ein')
+    if (!zipCode) {
+      setError('Bitte geben Sie eine Postleitzahl ein')
       return
     }
 
@@ -143,8 +179,16 @@ function App() {
 
     try {
       // Build URL with optional parameters
-      let url = '/api/dresden-listings?'
+      let url = '/api/listings?'
       const params = []
+      
+      // Required parameters
+      params.push(`zip_code=${zipCode}`)
+      
+      if (radius && radius.trim() !== '') {
+        const radiusValue = parseInt(radius.replace(/[.,]/g, ''))
+        params.push(`radius=${radiusValue}`)
+      }
       
       if (maxPrice && maxPrice.trim() !== '') {
         const maxPriceValue = parseInt(maxPrice.replace(/[.,]/g, ''))
@@ -274,6 +318,50 @@ function App() {
                 </Typography>
 
                 <Stack spacing={3}>
+                  {/* Location Row - PLZ and Radius */}
+                  <Stack 
+                    direction={{ xs: 'column', md: 'row' }} 
+                    spacing={3}
+                    justifyContent="center"
+                  >
+                    <Stack direction="row" spacing={2}>
+                      <TextField
+                        sx={{ maxWidth: '200px' }}
+                        label="Postleitzahl"
+                        type="text"
+                        value={zipCode}
+                        onChange={(e) => setZipCode(e.target.value)}
+                        placeholder="z.B. 01067"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <LocationOn color="primary" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                        required
+                      />
+                      
+                      <TextField
+                        sx={{ maxWidth: '200px' }}
+                        label="Umkreis"
+                        type="number"
+                        value={radius}
+                        onChange={(e) => setRadius(e.target.value)}
+                        placeholder="z.B. 10"
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              km
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                    </Stack>
+                  </Stack>
+
                   {/* First Row - Price Fields */}
                   <Stack 
                     direction={{ xs: 'column', md: 'row' }} 
@@ -418,6 +506,24 @@ function App() {
                         variant="outlined"
                       />
                     </Stack>
+
+                    {/* Sorting Dropdown */}
+                    <FormControl sx={{ minWidth: 200 }}>
+                      <InputLabel>Sortierung</InputLabel>
+                      <Select
+                        value={sortBy}
+                        label="Sortierung"
+                        onChange={(e) => setSortBy(e.target.value)}
+                      >
+                        <MenuItem value="">Keine Sortierung</MenuItem>
+                        <MenuItem value="price-asc">Preis aufsteigend</MenuItem>
+                        <MenuItem value="price-desc">Preis absteigend</MenuItem>
+                        <MenuItem value="price-per-sqm-asc">€/m² aufsteigend</MenuItem>
+                        <MenuItem value="price-per-sqm-desc">€/m² absteigend</MenuItem>
+                        <MenuItem value="area-asc">Fläche aufsteigend</MenuItem>
+                        <MenuItem value="area-desc">Fläche absteigend</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Stack>
 
                   {/* Search Button */}
@@ -473,13 +579,15 @@ function App() {
                       gap: 3 
                     }}
                   >
-                    {listings.map((listing, index) => (
+                    {sortListings(listings).map((listing, index) => (
                       <Card 
                         key={index}
                         elevation={3}
+                        onClick={() => window.open(listing.link, '_blank')}
                         sx={{
                           height: '100%',
                           transition: 'all 0.3s ease-in-out',
+                          cursor: 'pointer',
                           '&:hover': {
                             transform: 'translateY(-4px)',
                             boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
