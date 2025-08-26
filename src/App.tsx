@@ -663,7 +663,11 @@ function App() {
                   sx={{ mb: 3 }}
                 >
                   <Typography variant="h5" component="h3" color="white">
-                    {listings.length > 0 ? `${listings.length} Immobilien gefunden` : 'Keine Immobilien gefunden'}
+                    {!loading && (
+                      listings.length > 0 
+                        ? `${listings.length} Immobilien gefunden` 
+                        : 'Keine Immobilien gefunden'
+                    )}
                   </Typography>
 
                   {listings.length > 0 && (
