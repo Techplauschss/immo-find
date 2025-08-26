@@ -11,14 +11,30 @@ import {
   InputAdornment,
   ThemeProvider,
   createTheme,
-  CssBaseline
+  CssBaseline,
+  CircularProgress,
+  Alert,
+  Chip
 } from '@mui/material'
 import {
   Search,
   Euro,
-  SquareFoot
+  SquareFoot,
+  LocationOn
 } from '@mui/icons-material'
 import './App.css'
+
+// Types
+interface Listing {
+  price: string
+  qm: string
+  location: string
+}
+
+interface ApiResponse {
+  listings: Listing[]
+  count: number
+}
 
 // Material-UI Theme
 const theme = createTheme({
@@ -106,6 +122,48 @@ const theme = createTheme({
 function App() {
   const [price, setPrice] = useState('')
   const [area, setArea] = useState('')
+  const [listings, setListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [searchPerformed, setSearchPerformed] = useState(false)
+
+  const searchListings = async () => {
+    if (!price) {
+      setError('Bitte geben Sie einen maximalen Preis ein')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setSearchPerformed(true)
+
+    try {
+      const maxPrice = parseInt(price.replace(/[.,]/g, ''))
+      const response = await fetch(`/api/dresden-listings?max_price=${maxPrice}`)
+      
+      if (!response.ok) {
+        throw new Error('Fehler beim Laden der Daten')
+      }
+
+      const data: ApiResponse = await response.json()
+      console.log('API Response:', data)
+      
+      // Filter out listings with price per sqm <= 5€
+      const filteredListings = data.listings.filter(listing => {
+        const price = parseInt(listing.price.replace(/[€.,\s]/g, ''))
+        const qm = parseFloat(listing.qm.replace(',', '.'))
+        const pricePerSqm = price / qm
+        return pricePerSqm > 5
+      })
+      
+      setListings(filteredListings)
+    } catch (err) {
+      setError('Fehler beim Laden der Immobilien. Bitte versuchen Sie es später erneut.')
+      console.error('API Error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -214,7 +272,9 @@ function App() {
                     fullWidth
                     variant="contained"
                     size="large"
-                    startIcon={<Search />}
+                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Search />}
+                    onClick={searchListings}
+                    disabled={loading}
                     sx={{
                       py: 2,
                       background: 'linear-gradient(45deg, #2563eb 30%, #7c3aed 90%)',
@@ -223,13 +283,98 @@ function App() {
                         transform: 'translateY(-2px)',
                         boxShadow: '0 8px 25px rgba(37, 99, 235, 0.3)',
                       },
+                      '&:disabled': {
+                        background: 'rgba(0, 0, 0, 0.12)',
+                      },
                     }}
                   >
-                    Immobilien suchen
+                    {loading ? 'Suche läuft...' : 'Immobilien suchen'}
                   </Button>
+
+                  {/* Error Message */}
+                  {error && (
+                    <Alert severity="error" sx={{ mt: 2 }}>
+                      {error}
+                    </Alert>
+                  )}
                 </Stack>
               </CardContent>
             </Card>
+
+            {/* Results Section */}
+            {searchPerformed && (
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h5" component="h3" gutterBottom color="white" sx={{ mb: 3 }}>
+                  {listings.length > 0 ? `${listings.length} Immobilien gefunden` : 'Keine Immobilien gefunden'}
+                </Typography>
+
+                {listings.length > 0 && (
+                  <Box 
+                    sx={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: { 
+                        xs: '1fr', 
+                        sm: 'repeat(2, 1fr)', 
+                        md: 'repeat(3, 1fr)' 
+                      }, 
+                      gap: 3 
+                    }}
+                  >
+                    {listings.map((listing, index) => (
+                      <Card 
+                        key={index}
+                        elevation={3}
+                        sx={{
+                          height: '100%',
+                          transition: 'all 0.3s ease-in-out',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                          },
+                        }}
+                      >
+                          <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="h6" component="h4" color="primary" gutterBottom>
+                                {listing.price}
+                              </Typography>
+                            </Box>
+
+                            <Stack spacing={2}>
+                              <Box display="flex" alignItems="center">
+                                <SquareFoot sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  {listing.qm} m²
+                                </Typography>
+                              </Box>
+
+                              <Box display="flex" alignItems="flex-start">
+                                <LocationOn sx={{ mr: 1, color: 'text.secondary', fontSize: 20, mt: 0.2 }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  {listing.location}
+                                </Typography>
+                              </Box>
+
+                              {/* Price per m² calculation */}
+                              {listing.qm && listing.price && (
+                                <Chip
+                                  label={`${Math.round(
+                                    parseInt(listing.price.replace(/[€.,\s]/g, '')) / 
+                                    parseFloat(listing.qm.replace(',', '.'))
+                                  ).toLocaleString('de-DE')} €/m²`}
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                />
+                              )}
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            )}
           </Box>
         </Container>
       </Box>
