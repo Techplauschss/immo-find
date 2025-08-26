@@ -506,24 +506,6 @@ function App() {
                         variant="outlined"
                       />
                     </Stack>
-
-                    {/* Sorting Dropdown */}
-                    <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel>Sortierung</InputLabel>
-                      <Select
-                        value={sortBy}
-                        label="Sortierung"
-                        onChange={(e) => setSortBy(e.target.value)}
-                      >
-                        <MenuItem value="">Keine Sortierung</MenuItem>
-                        <MenuItem value="price-asc">Preis aufsteigend</MenuItem>
-                        <MenuItem value="price-desc">Preis absteigend</MenuItem>
-                        <MenuItem value="price-per-sqm-asc">€/m² aufsteigend</MenuItem>
-                        <MenuItem value="price-per-sqm-desc">€/m² absteigend</MenuItem>
-                        <MenuItem value="area-asc">Fläche aufsteigend</MenuItem>
-                        <MenuItem value="area-desc">Fläche absteigend</MenuItem>
-                      </Select>
-                    </FormControl>
                   </Stack>
 
                   {/* Search Button */}
@@ -563,9 +545,51 @@ function App() {
             {/* Results Section */}
             {searchPerformed && (
               <Box sx={{ mt: 4 }}>
-                <Typography variant="h5" component="h3" gutterBottom color="white" sx={{ mb: 3 }}>
-                  {listings.length > 0 ? `${listings.length} Immobilien gefunden` : 'Keine Immobilien gefunden'}
-                </Typography>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  justifyContent="space-between" 
+                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  spacing={2}
+                  sx={{ mb: 3 }}
+                >
+                  <Typography variant="h5" component="h3" color="white">
+                    {listings.length > 0 ? `${listings.length} Immobilien gefunden` : 'Keine Immobilien gefunden'}
+                  </Typography>
+
+                  {listings.length > 0 && (
+                    <FormControl sx={{ minWidth: 200 }}>
+                      <InputLabel sx={{ color: 'white' }}>Sortierung</InputLabel>
+                      <Select
+                        value={sortBy}
+                        label="Sortierung"
+                        onChange={(e) => setSortBy(e.target.value)}
+                        sx={{
+                          color: 'white',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 255, 255, 0.5)',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'white',
+                          },
+                          '& .MuiSvgIcon-root': {
+                            color: 'white',
+                          },
+                        }}
+                      >
+                        <MenuItem value="">Keine Sortierung</MenuItem>
+                        <MenuItem value="price-asc">Preis aufsteigend</MenuItem>
+                        <MenuItem value="price-desc">Preis absteigend</MenuItem>
+                        <MenuItem value="price-per-sqm-asc">€/m² aufsteigend</MenuItem>
+                        <MenuItem value="price-per-sqm-desc">€/m² absteigend</MenuItem>
+                        <MenuItem value="area-asc">Fläche aufsteigend</MenuItem>
+                        <MenuItem value="area-desc">Fläche absteigend</MenuItem>
+                      </Select>
+                    </FormControl>
+                  )}
+                </Stack>
 
                 {listings.length > 0 && (
                   <Box 
