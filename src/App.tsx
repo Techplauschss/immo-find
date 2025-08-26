@@ -120,16 +120,20 @@ const theme = createTheme({
 })
 
 function App() {
-  const [price, setPrice] = useState('')
-  const [area, setArea] = useState('')
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+  const [minArea, setMinArea] = useState('')
+  const [maxArea, setMaxArea] = useState('')
+  const [minPricePerSqm, setMinPricePerSqm] = useState('')
+  const [maxPricePerSqm, setMaxPricePerSqm] = useState('')
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchPerformed, setSearchPerformed] = useState(false)
 
-  const searchListings = async () => {
-    if (!price) {
-      setError('Bitte geben Sie einen maximalen Preis ein')
+    const searchListings = async () => {
+    if (!minPrice && !maxPrice) {
+      setError('Bitte geben Sie einen Mindest- oder Maximalpreis ein')
       return
     }
 
@@ -138,8 +142,43 @@ function App() {
     setSearchPerformed(true)
 
     try {
-      const maxPrice = parseInt(price.replace(/[.,]/g, ''))
-      const response = await fetch(`/api/dresden-listings?max_price=${maxPrice}`)
+      // Build URL with optional parameters
+      let url = '/api/dresden-listings?'
+      const params = []
+      
+      if (maxPrice && maxPrice.trim() !== '') {
+        const maxPriceValue = parseInt(maxPrice.replace(/[.,]/g, ''))
+        params.push(`max_price=${maxPriceValue}`)
+      }
+      
+      if (minPrice && minPrice.trim() !== '') {
+        const minPriceValue = parseInt(minPrice.replace(/[.,]/g, ''))
+        params.push(`min_price=${minPriceValue}`)
+      }
+      
+      if (minArea && minArea.trim() !== '') {
+        const minQm = parseInt(minArea.replace(/[.,]/g, ''))
+        params.push(`min_qm=${minQm}`)
+      }
+      
+      if (maxArea && maxArea.trim() !== '') {
+        const maxQm = parseInt(maxArea.replace(/[.,]/g, ''))
+        params.push(`max_qm=${maxQm}`)
+      }
+      
+      if (minPricePerSqm && minPricePerSqm.trim() !== '') {
+        const minPricePerSqmValue = parseInt(minPricePerSqm.replace(/[.,]/g, ''))
+        params.push(`min_price_per_sqm=${minPricePerSqmValue}`)
+      }
+      
+      if (maxPricePerSqm && maxPricePerSqm.trim() !== '') {
+        const maxPricePerSqmValue = parseInt(maxPricePerSqm.replace(/[.,]/g, ''))
+        params.push(`max_price_per_sqm=${maxPricePerSqmValue}`)
+      }
+      
+      url += params.join('&')
+      
+      const response = await fetch(url)
       
       if (!response.ok) {
         throw new Error('Fehler beim Laden der Daten')
@@ -148,12 +187,27 @@ function App() {
       const data: ApiResponse = await response.json()
       console.log('API Response:', data)
       
-      // Filter out listings with price per sqm <= 5€
+      // Filter listings
       const filteredListings = data.listings.filter(listing => {
         const price = parseInt(listing.price.replace(/[€.,\s]/g, ''))
         const qm = parseFloat(listing.qm.replace(',', '.'))
         const pricePerSqm = price / qm
-        return pricePerSqm > 5
+        
+        // Basic filter
+        if (pricePerSqm <= 5 || pricePerSqm < 100) return false
+        
+        // Additional client-side filters for price per sqm
+        if (minPricePerSqm && minPricePerSqm.trim() !== '') {
+          const minPricePerSqmValue = parseInt(minPricePerSqm.replace(/[.,]/g, ''))
+          if (pricePerSqm < minPricePerSqmValue) return false
+        }
+        
+        if (maxPricePerSqm && maxPricePerSqm.trim() !== '') {
+          const maxPricePerSqmValue = parseInt(maxPricePerSqm.replace(/[.,]/g, ''))
+          if (pricePerSqm > maxPricePerSqmValue) return false
+        }
+        
+        return true
       })
       
       setListings(filteredListings)
@@ -220,51 +274,150 @@ function App() {
                 </Typography>
 
                 <Stack spacing={3}>
-                  {/* Input Fields Row */}
+                  {/* First Row - Price Fields */}
                   <Stack 
                     direction={{ xs: 'column', md: 'row' }} 
                     spacing={3}
+                    justifyContent="center"
+                    flexWrap="wrap"
                   >
-                    {/* Price Input */}
-                    <TextField
-                      fullWidth
-                      label="Maximaler Preis"
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      placeholder="z.B. 500000"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Euro color="primary" />
-                          </InputAdornment>
-                        ),
-                      }}
-                      variant="outlined"
-                    />
+                    {/* Price Inputs */}
+                    <Stack direction="row" spacing={2}>
+                      <TextField
+                        sx={{ maxWidth: '200px' }}
+                        label="Mindestpreis"
+                        type="number"
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value)}
+                        placeholder="z.B. 300000"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Euro color="primary" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                      
+                      <TextField
+                        sx={{ maxWidth: '200px' }}
+                        label="Maximalpreis"
+                        type="number"
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(e.target.value)}
+                        placeholder="z.B. 500000"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Euro color="primary" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                    </Stack>
 
-                    {/* Area Input */}
-                    <TextField
-                      fullWidth
-                      label="Mindest-Quadratmeter"
-                      type="number"
-                      value={area}
-                      onChange={(e) => setArea(e.target.value)}
-                      placeholder="z.B. 80"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SquareFoot color="primary" />
-                          </InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            m²
-                          </InputAdornment>
-                        ),
-                      }}
-                      variant="outlined"
-                    />
+                    {/* Price per SQM Inputs */}
+                    <Stack direction="row" spacing={2}>
+                      <TextField
+                        sx={{ maxWidth: '180px' }}
+                        label="Min €/m²"
+                        type="number"
+                        value={minPricePerSqm}
+                        onChange={(e) => setMinPricePerSqm(e.target.value)}
+                        placeholder="z.B. 1500"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Euro color="primary" />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              /m²
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                      
+                      <TextField
+                        sx={{ maxWidth: '180px' }}
+                        label="Max €/m²"
+                        type="number"
+                        value={maxPricePerSqm}
+                        onChange={(e) => setMaxPricePerSqm(e.target.value)}
+                        placeholder="z.B. 3000"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Euro color="primary" />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              /m²
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                    </Stack>
+                  </Stack>
+
+                  {/* Second Row - Area Fields */}
+                  <Stack 
+                    direction={{ xs: 'column', md: 'row' }} 
+                    spacing={3}
+                    justifyContent="center"
+                  >
+                    {/* Area Inputs */}
+                    <Stack direction="row" spacing={2}>
+                      <TextField
+                        sx={{ maxWidth: '200px' }}
+                        label="Min Quadratmeter"
+                        type="number"
+                        value={minArea}
+                        onChange={(e) => setMinArea(e.target.value)}
+                        placeholder="z.B. 80"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SquareFoot color="primary" />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              m²
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                      
+                      <TextField
+                        sx={{ maxWidth: '200px' }}
+                        label="Max Quadratmeter"
+                        type="number"
+                        value={maxArea}
+                        onChange={(e) => setMaxArea(e.target.value)}
+                        placeholder="z.B. 150"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SquareFoot color="primary" />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              m²
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                      />
+                    </Stack>
                   </Stack>
 
                   {/* Search Button */}
