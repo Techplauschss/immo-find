@@ -41,18 +41,10 @@ interface ApiResponse {
   count: number
 }
 
-// ZIP Code options with major German cities
+// Available cities for property search
 const zipCodeOptions = [
   { value: '01069', label: 'Dresden', city: 'Dresden' },
-  { value: '10115', label: 'Berlin', city: 'Berlin' },
-  { value: '20095', label: 'Hamburg', city: 'Hamburg' },
-  { value: '30159', label: 'Hannover', city: 'Hannover' },
-  { value: '40210', label: 'Düsseldorf', city: 'Düsseldorf' },
-  { value: '50667', label: 'Köln', city: 'Köln' },
-  { value: '60311', label: 'Frankfurt am Main', city: 'Frankfurt am Main' },
-  { value: '70173', label: 'Stuttgart', city: 'Stuttgart' },
-  { value: '80331', label: 'München', city: 'München' },
-  { value: '90402', label: 'Nürnberg', city: 'Nürnberg' },
+  { value: '04109', label: 'Leipzig', city: 'Leipzig' },
 ]
 
 // Material-UI Theme
@@ -205,7 +197,8 @@ function App() {
       // Dummy-Daten basierend auf PLZ (erste zwei Ziffern für Regionen)
       const region = zipCode.substring(0, 2)
       const dummyPrices: { [key: string]: number } = {
-        '01': 3200, // Dresden
+        '01': 2870, // Dresden
+        '04': 2950, // Leipzig
         '10': 8500, // Berlin
         '20': 7200, // Hamburg  
         '30': 4800, // Hannover
@@ -239,7 +232,15 @@ function App() {
 
     try {
       // Build URL with optional parameters
-      let url = zipCode === '01069' ? '/api/dresden-listings?' : '/api/listings?'
+      let url = '/api/listings?'
+      
+      // Use specific endpoints for certain cities
+      if (zipCode === '01069') {
+        url = '/api/dresden-listings?'
+      } else if (zipCode === '04109') {
+        url = '/api/leipzig-listings?'
+      }
+      
       const params = []
       
       // Required parameters
@@ -290,6 +291,12 @@ function App() {
 
       const data: ApiResponse = await response.json()
       console.log('API Response:', data)
+      
+      // Check if listings exist in response
+      if (!data || !data.listings || !Array.isArray(data.listings)) {
+        console.error('Invalid API response structure:', data)
+        throw new Error('Ungültige API-Antwort: Keine Immobilien-Daten gefunden')
+      }
       
       // Filter listings
       const filteredListings = data.listings.filter(listing => {
