@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Container,
   Typography,
@@ -40,6 +40,20 @@ interface ApiResponse {
   listings: Listing[]
   count: number
 }
+
+// ZIP Code options with major German cities
+const zipCodeOptions = [
+  { value: '01069', label: 'Dresden', city: 'Dresden' },
+  { value: '10115', label: 'Berlin', city: 'Berlin' },
+  { value: '20095', label: 'Hamburg', city: 'Hamburg' },
+  { value: '30159', label: 'Hannover', city: 'Hannover' },
+  { value: '40210', label: 'Düsseldorf', city: 'Düsseldorf' },
+  { value: '50667', label: 'Köln', city: 'Köln' },
+  { value: '60311', label: 'Frankfurt am Main', city: 'Frankfurt am Main' },
+  { value: '70173', label: 'Stuttgart', city: 'Stuttgart' },
+  { value: '80331', label: 'München', city: 'München' },
+  { value: '90402', label: 'Nürnberg', city: 'Nürnberg' },
+]
 
 // Material-UI Theme
 const theme = createTheme({
@@ -131,13 +145,20 @@ function App() {
   const [maxArea, setMaxArea] = useState('')
   const [minPricePerSqm, setMinPricePerSqm] = useState('')
   const [maxPricePerSqm, setMaxPricePerSqm] = useState('')
-  const [zipCode, setZipCode] = useState('')
+  const [zipCode, setZipCode] = useState('01069') // Dresden als Standard
   const [radius, setRadius] = useState('')
+  const [avgPricePerSqm, setAvgPricePerSqm] = useState('')
+  const [loadingAvgPrice, setLoadingAvgPrice] = useState(false)
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchPerformed, setSearchPerformed] = useState(false)
   const [sortBy, setSortBy] = useState('')
+
+  // Load average price on component mount
+  useEffect(() => {
+    fetchAveragePrice('01069')
+  }, [])
 
   const sortListings = (listingsToSort: Listing[]) => {
     if (!sortBy) return listingsToSort
@@ -167,6 +188,45 @@ function App() {
     })
   }
 
+  const fetchAveragePrice = async (zipCode: string) => {
+    if (!zipCode || zipCode.length < 5) {
+      setAvgPricePerSqm('')
+      return
+    }
+
+    setLoadingAvgPrice(true)
+    try {
+      // TODO: Hier würde die echte API-Abfrage stehen
+      // Für jetzt verwenden wir Dummy-Daten basierend auf der PLZ
+      
+      // Simuliere API-Aufruf
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Dummy-Daten basierend auf PLZ (erste zwei Ziffern für Regionen)
+      const region = zipCode.substring(0, 2)
+      const dummyPrices: { [key: string]: number } = {
+        '01': 3200, // Dresden
+        '10': 8500, // Berlin
+        '20': 7200, // Hamburg  
+        '30': 4800, // Hannover
+        '40': 4200, // Düsseldorf
+        '50': 5200, // Köln
+        '60': 6800, // Frankfurt
+        '70': 5800, // Stuttgart
+        '80': 9200, // München
+        '90': 4600, // Nürnberg
+      }
+      
+      const avgPrice = dummyPrices[region] || 3500 // Fallback-Wert
+      setAvgPricePerSqm(avgPrice.toLocaleString('de-DE'))
+    } catch (err) {
+      console.error('Fehler beim Laden des Durchschnittspreises:', err)
+      setAvgPricePerSqm('')
+    } finally {
+      setLoadingAvgPrice(false)
+    }
+  }
+
     const searchListings = async () => {
     if (!zipCode) {
       setError('Bitte geben Sie eine Postleitzahl ein')
@@ -179,7 +239,7 @@ function App() {
 
     try {
       // Build URL with optional parameters
-      let url = '/api/listings?'
+      let url = zipCode === '01069' ? '/api/dresden-listings?' : '/api/listings?'
       const params = []
       
       // Required parameters
@@ -239,6 +299,17 @@ function App() {
         
         // Basic filter
         if (pricePerSqm <= 5 || pricePerSqm < 100) return false
+        
+        // Filter by radius if specified
+        if (radius && radius.trim() !== '') {
+          const radiusValue = parseInt(radius.replace(/[.,]/g, ''))
+          // Extract distance from location string (e.g. "Dresden (5 km)" -> 5)
+          const distanceMatch = listing.location.match(/\((\d+(?:[.,]\d+)?)\s*km\)/)
+          if (distanceMatch) {
+            const distance = parseFloat(distanceMatch[1].replace(',', '.'))
+            if (distance > radiusValue) return false
+          }
+        }
         
         // Additional client-side filters for price per sqm
         if (minPricePerSqm && minPricePerSqm.trim() !== '') {
@@ -325,23 +396,38 @@ function App() {
                     justifyContent="center"
                   >
                     <Stack direction="row" spacing={2}>
-                      <TextField
-                        sx={{ maxWidth: '200px' }}
-                        label="Postleitzahl"
-                        type="text"
-                        value={zipCode}
-                        onChange={(e) => setZipCode(e.target.value)}
-                        placeholder="z.B. 01067"
-                        InputProps={{
-                          startAdornment: (
+                      <FormControl sx={{ maxWidth: '250px' }}>
+                        <InputLabel>Stadt</InputLabel>
+                        <Select
+                          value={zipCode}
+                          label="Stadt"
+                          onChange={(e) => {
+                            setZipCode(e.target.value)
+                            fetchAveragePrice(e.target.value)
+                          }}
+                          startAdornment={
                             <InputAdornment position="start">
                               <LocationOn color="primary" />
                             </InputAdornment>
-                          ),
-                        }}
-                        variant="outlined"
-                        required
-                      />
+                          }
+                          required
+                          renderValue={(selected) => {
+                            const selectedOption = zipCodeOptions.find(option => option.value === selected)
+                            return selectedOption ? selectedOption.city : ''
+                          }}
+                        >
+                          {zipCodeOptions.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              <Box>
+                                <Typography variant="body1">{option.city}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {option.value}
+                                </Typography>
+                              </Box>
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                       
                       <TextField
                         sx={{ maxWidth: '200px' }}
@@ -358,6 +444,23 @@ function App() {
                           ),
                         }}
                         variant="outlined"
+                      />
+
+                      {/* Average Price Display */}
+                      <TextField
+                        sx={{ maxWidth: '250px' }}
+                        label="Ø Kaufpreis/m² in PLZ"
+                        value={loadingAvgPrice ? 'Wird geladen...' : avgPricePerSqm ? `${avgPricePerSqm} €/m²` : ''}
+                        InputProps={{
+                          readOnly: true,
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Euro color="primary" />
+                            </InputAdornment>
+                          ),
+                        }}
+                        variant="outlined"
+                        disabled={!avgPricePerSqm && !loadingAvgPrice}
                       />
                     </Stack>
                   </Stack>
