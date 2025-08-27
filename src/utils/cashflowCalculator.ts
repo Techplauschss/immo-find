@@ -35,7 +35,6 @@ export const calculateCashflow = ({ price, qm, city }: CashflowCalculationParams
     // Kaufmännisches Runden
     return Math.round(cashflow)
   } catch (error) {
-    console.error(`❌ Fehler bei Cashflow-Berechnung für ${price} | ${qm}:`, error)
     // Fallback auf Dummywert bei Parsing-Fehlern
     return 100
   }

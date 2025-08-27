@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material'
 import './App.css'
 import CalculatorIcon from './CalculatorIcon'
+import SearchIcon from './SearchIcon'
 import CashflowChip, { getCashflowValue } from './CashflowChip'
 
 // Types
@@ -150,6 +151,7 @@ function App() {
   const [error, setError] = useState('')
   const [searchPerformed, setSearchPerformed] = useState(false)
   const [showOnlyPositiveCashflow, setShowOnlyPositiveCashflow] = useState(false)
+  const [scrapingCard, setScrapingCard] = useState<string | null>(null) // Für die Loading-Animation über der Card
 
   // Helper function to get city from zipCode
   const getCityFromZipCode = (zipCode: string) => {
@@ -1010,6 +1012,32 @@ function App() {
                           qm={listing.qm}
                           city={getCityFromZipCode(zipCode)}
                         />
+                        <SearchIcon 
+                          link={listing.link}
+                          qm={listing.qm}
+                          city={getCityFromZipCode(zipCode)}
+                          onSearchStart={() => setScrapingCard(listing.link)}
+                          onSearchEnd={() => setScrapingCard(null)}
+                        />
+                        {scrapingCard === listing.link && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              zIndex: 10,
+                              borderRadius: 2,
+                            }}
+                          >
+                            <CircularProgress size={40} />
+                          </Box>
+                        )}
                           <CardContent sx={{ p: 3 }}>
                             <Box sx={{ mb: 2 }}>
                               <Typography variant="h6" component="h4" color="primary" gutterBottom>
