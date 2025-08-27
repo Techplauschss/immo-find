@@ -64,6 +64,9 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
         } else {
           console.log('Niedrigster Wert:', finalValue.toFixed(2))
         }
+        
+        // Ausgabe des finalen Wertes
+        console.log('value:', finalValue)
       } else {
         console.log('Keine Werte in der API-Antwort gefunden')
       }
