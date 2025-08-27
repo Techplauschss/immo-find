@@ -22,6 +22,7 @@ import {
   ArrowBack,
   Percent,
 } from '@mui/icons-material'
+import { useCitySettings } from './contexts/CitySettingsContext'
 
 // Material-UI Theme (gleicher wie in App.tsx)
 const theme = createTheme({
@@ -108,6 +109,7 @@ const theme = createTheme({
 
 function Rechner() {
   const navigate = useNavigate()
+  const { getRentPerSqm } = useCitySettings()
   
   // Eingabefelder
   const [purchasePrice, setPurchasePrice] = useState('')
@@ -180,7 +182,7 @@ function Rechner() {
     if (!hasManualPrice) {
       const qm = parseFloat(squareMeters.replace(',', '.')) || 0
       if (qm > 0) {
-        const pricePerSqm = selectedCity === 'Dresden' ? 9.5 : 9.8
+        const pricePerSqm = getRentPerSqm(selectedCity)
         const calculatedPrice = qm * pricePerSqm
         setAutoRentPrice(formatCurrency(calculatedPrice))
       } else {
@@ -190,7 +192,7 @@ function Rechner() {
       // Wenn manueller Preis eingegeben wurde, Auto-Mietpreis leeren
       setAutoRentPrice('')
     }
-  }, [squareMeters, selectedCity, manualRentPrice])
+  }, [squareMeters, selectedCity, manualRentPrice, getRentPerSqm])
 
   // Automatische Berechnung des Finanzierungsbetrags
   useEffect(() => {
@@ -361,7 +363,7 @@ function Rechner() {
         }}
       >
         <Container maxWidth="lg">
-          <Box sx={{ mb: 4 }}>
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between' }}>
             <Button
               startIcon={<ArrowBack />}
               onClick={() => navigate('/')}
@@ -373,6 +375,21 @@ function Rechner() {
               }}
             >
               Zurück zur Suche
+            </Button>
+            
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/settings')}
+              sx={{
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              Einstellungen
             </Button>
           </Box>
 

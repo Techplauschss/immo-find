@@ -4,14 +4,19 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import Rechner from './Rechner.tsx'
+import SettingsPanel from './SettingsPanel.tsx'
+import { CitySettingsProvider } from './contexts/CitySettingsContext.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/rechner" element={<Rechner />} />
-      </Routes>
-    </BrowserRouter>
+    <CitySettingsProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/rechner" element={<Rechner />} />
+          <Route path="/settings" element={<SettingsPanel />} />
+        </Routes>
+      </BrowserRouter>
+    </CitySettingsProvider>
   </StrictMode>,
 )

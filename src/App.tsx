@@ -534,6 +534,25 @@ function App() {
               Rechner
             </Button>
 
+            {/* Settings Button - Top Right */}
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/settings')}
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              Einstellungen
+            </Button>
+
             <Box textAlign="center">
               <Typography
                 variant="h2"
