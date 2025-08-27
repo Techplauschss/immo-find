@@ -166,10 +166,13 @@ function App() {
   }
 
   // Save search data to localStorage
-  const saveSearchData = (searchData: { listings: Listing[], searchParams: any, sortBy: string }) => {
+  const saveSearchData = (searchData: { listings: Listing[], searchParams: any, sortBy: string, showOnlyPositiveCashflow: boolean }) => {
     try {
       localStorage.setItem(STORAGE_KEYS.searchData, JSON.stringify(searchData.listings))
-      localStorage.setItem(STORAGE_KEYS.searchParams, JSON.stringify(searchData.searchParams))
+      localStorage.setItem(STORAGE_KEYS.searchParams, JSON.stringify({
+        ...searchData.searchParams,
+        showOnlyPositiveCashflow: searchData.showOnlyPositiveCashflow
+      }))
       localStorage.setItem(STORAGE_KEYS.lastSearch, Date.now().toString())
     } catch (error) {
       console.error('Fehler beim Speichern der Suchdaten:', error)
@@ -202,6 +205,7 @@ function App() {
           setZipCode(params.zipCode || '01069')
           setRadius(params.radius || '')
           setSortBy(params.sortBy || '')
+          setShowOnlyPositiveCashflow(params.showOnlyPositiveCashflow || false)
           
           // Restore listings and search state
           setListings(listings)
@@ -247,10 +251,35 @@ function App() {
       saveSearchData({
         listings,
         searchParams,
-        sortBy
+        sortBy,
+        showOnlyPositiveCashflow
       })
     }
   }, [sortBy])
+
+  // Update localStorage when cashflow filter changes and we have listings
+  useEffect(() => {
+    if (listings.length > 0 && searchPerformed) {
+      const searchParams = {
+        minPrice,
+        maxPrice,
+        minArea,
+        maxArea,
+        minPricePerSqm,
+        maxPricePerSqm,
+        zipCode,
+        radius,
+        sortBy
+      }
+      
+      saveSearchData({
+        listings,
+        searchParams,
+        sortBy,
+        showOnlyPositiveCashflow
+      })
+    }
+  }, [showOnlyPositiveCashflow])
 
   const sortListings = (listingsToSort: Listing[]) => {
     if (!sortBy) return listingsToSort
@@ -461,7 +490,8 @@ function App() {
       saveSearchData({
         listings: filteredListings,
         searchParams,
-        sortBy
+        sortBy,
+        showOnlyPositiveCashflow
       })
       
     } catch (err) {
