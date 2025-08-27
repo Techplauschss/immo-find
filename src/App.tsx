@@ -19,7 +19,9 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material'
 import {
   Search,
@@ -29,7 +31,7 @@ import {
 } from '@mui/icons-material'
 import './App.css'
 import CalculatorIcon from './CalculatorIcon'
-import CashflowChip from './CashflowChip'
+import CashflowChip, { getCashflowValue } from './CashflowChip'
 
 // Types
 interface Listing {
@@ -149,6 +151,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchPerformed, setSearchPerformed] = useState(false)
+  const [showOnlyPositiveCashflow, setShowOnlyPositiveCashflow] = useState(false)
 
   // Helper function to get city from zipCode
   const getCityFromZipCode = (zipCode: string) => {
@@ -276,6 +279,15 @@ function App() {
         default:
           return 0
       }
+    })
+  }
+
+  const filterListings = (listingsToFilter: Listing[]) => {
+    if (!showOnlyPositiveCashflow) return listingsToFilter
+    
+    return listingsToFilter.filter(listing => {
+      const cashflowValue = getCashflowValue(listing.price, listing.qm, getCityFromZipCode(zipCode))
+      return cashflowValue >= 0
     })
   }
 
@@ -806,48 +818,72 @@ function App() {
                 >
                   <Typography variant="h5" component="h3" color="white">
                     {!loading && (
-                      listings.length > 0 
-                        ? `${listings.length} Immobilien gefunden` 
+                      filterListings(listings).length > 0 
+                        ? `${filterListings(listings).length} Immobilien gefunden` 
                         : 'Keine Immobilien gefunden'
                     )}
                   </Typography>
 
-                  {listings.length > 0 && (
-                    <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel sx={{ color: 'white' }}>Sortierung</InputLabel>
-                      <Select
-                        value={sortBy}
-                        label="Sortierung"
-                        onChange={(e) => setSortBy(e.target.value)}
-                        sx={{
-                          color: 'white',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 255, 255, 0.3)',
-                          },
-                          '&:hover .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                          },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                            borderColor: 'white',
-                          },
-                          '& .MuiSvgIcon-root': {
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+                    {/* Cashflow Filter Checkbox */}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={showOnlyPositiveCashflow}
+                          onChange={(e) => setShowOnlyPositiveCashflow(e.target.checked)}
+                          sx={{
                             color: 'white',
-                          },
-                        }}
-                      >
-                        <MenuItem value="">Keine Sortierung</MenuItem>
-                        <MenuItem value="price-asc">Preis aufsteigend</MenuItem>
-                        <MenuItem value="price-desc">Preis absteigend</MenuItem>
-                        <MenuItem value="price-per-sqm-asc">€/m² aufsteigend</MenuItem>
-                        <MenuItem value="price-per-sqm-desc">€/m² absteigend</MenuItem>
-                        <MenuItem value="area-asc">Fläche aufsteigend</MenuItem>
-                        <MenuItem value="area-desc">Fläche absteigend</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
+                            '&.Mui-checked': {
+                              color: '#22c55e', // Green color matching positive cashflow
+                            },
+                          }}
+                        />
+                      }
+                      label={
+                        <Typography sx={{ color: 'white', fontSize: '0.9rem' }}>
+                          Nur positive Cashflows
+                        </Typography>
+                      }
+                    />
+
+                    {/* Sorting Dropdown */}
+                    {listings.length > 0 && (
+                      <FormControl sx={{ minWidth: 200 }}>
+                        <InputLabel sx={{ color: 'white' }}>Sortierung</InputLabel>
+                        <Select
+                          value={sortBy}
+                          label="Sortierung"
+                          onChange={(e) => setSortBy(e.target.value)}
+                          sx={{
+                            color: 'white',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'rgba(255, 255, 255, 0.5)',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: 'white',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: 'white',
+                            },
+                          }}
+                        >
+                          <MenuItem value="">Keine Sortierung</MenuItem>
+                          <MenuItem value="price-asc">Preis aufsteigend</MenuItem>
+                          <MenuItem value="price-desc">Preis absteigend</MenuItem>
+                          <MenuItem value="price-per-sqm-asc">€/m² aufsteigend</MenuItem>
+                          <MenuItem value="price-per-sqm-desc">€/m² absteigend</MenuItem>
+                          <MenuItem value="area-asc">Fläche aufsteigend</MenuItem>
+                          <MenuItem value="area-desc">Fläche absteigend</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  </Stack>
                 </Stack>
 
-                {listings.length > 0 && (
+                {filterListings(listings).length > 0 && (
                   <Box 
                     sx={{ 
                       display: 'grid', 
@@ -859,22 +895,33 @@ function App() {
                       gap: 3 
                     }}
                   >
-                    {sortListings(listings).map((listing, index) => (
-                      <Card 
-                        key={index}
-                        elevation={3}
-                        onClick={() => window.open(listing.link, '_blank')}
-                        sx={{
-                          height: '100%',
-                          position: 'relative',
-                          transition: 'all 0.3s ease-in-out',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                          },
-                        }}
-                      >
+                    {sortListings(filterListings(listings)).map((listing, index) => {
+                      // Calculate cashflow to determine card styling
+                      const cashflowValue = getCashflowValue(listing.price, listing.qm, getCityFromZipCode(zipCode))
+                      const isNegativeCashflow = cashflowValue < 0
+                      
+                      return (
+                        <Card 
+                          key={index}
+                          elevation={3}
+                          onClick={() => window.open(listing.link, '_blank')}
+                          sx={{
+                            height: '100%',
+                            position: 'relative',
+                            transition: 'all 0.3s ease-in-out',
+                            cursor: 'pointer',
+                            backgroundColor: 'background.paper', // Keep white background
+                            boxShadow: isNegativeCashflow 
+                              ? '0 0 20px rgba(220, 38, 38, 0.4)' // Red glow effect for negative cashflow
+                              : '0 0 20px rgba(34, 197, 94, 0.4)', // Green glow effect for positive cashflow
+                            '&:hover': {
+                              transform: 'translateY(-4px)',
+                              boxShadow: isNegativeCashflow 
+                                ? '0 8px 30px rgba(220, 38, 38, 0.5), 0 0 25px rgba(220, 38, 38, 0.3)' // Enhanced red glow on hover
+                                : '0 8px 30px rgba(34, 197, 94, 0.5), 0 0 25px rgba(34, 197, 94, 0.3)', // Enhanced green glow on hover
+                            },
+                          }}
+                        >
                         <CalculatorIcon 
                           price={listing.price}
                           qm={listing.qm}
@@ -926,7 +973,8 @@ function App() {
                             </Stack>
                           </CardContent>
                         </Card>
-                    ))}
+                      )
+                    })}
                   </Box>
                 )}
               </Box>
