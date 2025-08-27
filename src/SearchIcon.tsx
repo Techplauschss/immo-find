@@ -10,9 +10,10 @@ interface SearchIconProps {
   sx?: any
   onSearchStart?: () => void
   onSearchEnd?: () => void
+  onValueFound?: (value: number) => void // Callback für gefundenen Wert
 }
 
-const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchStart, onSearchEnd }) => {
+const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchStart, onSearchEnd, onValueFound }) => {
   const [loading, setLoading] = useState(false)
   const { getRentPerSqm } = useCitySettings()
 
@@ -65,8 +66,10 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
           console.log('Niedrigster Wert:', finalValue.toFixed(2))
         }
         
-        // Ausgabe des finalen Wertes
-        console.log('value:', finalValue)
+        // Callback aufrufen, wenn ein Wert > 0 gefunden wurde
+        if (finalValue > 0 && onValueFound) {
+          onValueFound(finalValue)
+        }
       } else {
         console.log('Keine Werte in der API-Antwort gefunden')
       }
@@ -87,7 +90,7 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
         sx={{
           position: 'absolute',
           top: 16,
-          right: 72, // Positioniert links neben dem Calculator-Button
+          right: 60, // Positioniert links neben dem Calculator-Button (verringerter Abstand)
           backgroundColor: 'secondary.main',
           color: 'white',
           boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',

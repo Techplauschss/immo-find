@@ -209,13 +209,9 @@ function Rechner() {
     const price = parseFormattedNumber(purchasePrice)
     const down = parseFormattedNumber(downPayment)
     
-    console.log('Debug - Kaufpreis:', purchasePrice, '→', price)
-    console.log('Debug - Eigenkapital:', downPayment, '→', down)
-    
     if (price > 0) {
       // Finanzierungsbetrag berechnen
       const financing = Math.max(0, price - down)
-      console.log('Debug - Finanzierungsbetrag:', financing)
       setFinancingAmount(formatCurrency(financing))
     } else {
       setFinancingAmount('')
@@ -232,8 +228,6 @@ function Rechner() {
     const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) || 0
     const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) || 0
 
-    console.log('Debug Annuität - QM:', qm, 'Mietpreis vorhanden:', hasRentPrice, 'Finanzierung:', financing, 'Zinssatz:', interestRateDecimal, 'Tilgung:', repaymentRateDecimal)
-
     if (financing > 100 && interestRateDecimal > 0 && repaymentRateDecimal > 0) {
       // Zinsen pro Monat = Finanzierungsbetrag * Zinssatz p.A. / 12
       const monthlyInterestCalc = (financing * interestRateDecimal / 100) / 12
@@ -248,11 +242,8 @@ function Rechner() {
       setMonthlyPrincipal(monthlyPrincipalCalc)
       setMonthlyAnnuity(monthlyAnnuityCalc)
       setShowAnnuityOverview(true)
-
-      console.log('Debug Annuität berechnet - Zinsen:', monthlyInterestCalc, 'Tilgung:', monthlyPrincipalCalc, 'Gesamt:', monthlyAnnuityCalc)
     } else {
       setShowAnnuityOverview(false)
-      console.log('Debug Annuität - Bedingungen nicht erfüllt')
     }
   }, [squareMeters, autoRentPrice, manualRentPrice, financingAmount, interestRate, repaymentRateInput])
 

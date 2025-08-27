@@ -38,6 +38,7 @@ interface Listing {
   qm: string
   location: string
   link: string
+  foundRentValue?: number // Optional: gefundener Mietpreis durch Scraping
 }
 
 interface ApiResponse {
@@ -158,6 +159,34 @@ function App() {
     const option = zipCodeOptions.find(option => option.value === zipCode)
     return option ? option.city : 'Dresden' // Default to Dresden
   }
+
+  // LocalStorage functions for persistent found rent values
+  const saveFoundRentValues = (listings: Listing[]) => {
+    const rentValues: { [link: string]: number } = {}
+    listings.forEach(listing => {
+      if (listing.foundRentValue && listing.foundRentValue > 0) {
+        rentValues[listing.link] = listing.foundRentValue
+      }
+    })
+    localStorage.setItem('foundRentValues', JSON.stringify(rentValues))
+  }
+
+  const loadFoundRentValues = (): { [link: string]: number } => {
+    try {
+      const saved = localStorage.getItem('foundRentValues')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  }
+
+  const restoreFoundRentValues = (listings: Listing[]): Listing[] => {
+    const savedValues = loadFoundRentValues()
+    return listings.map(listing => ({
+      ...listing,
+      foundRentValue: savedValues[listing.link] || listing.foundRentValue
+    }))
+  }
   const [sortBy, setSortBy] = useState('')
 
   // Storage keys for localStorage
@@ -210,7 +239,8 @@ function App() {
           setShowOnlyPositiveCashflow(params.showOnlyPositiveCashflow || false)
           
           // Restore listings and search state
-          setListings(listings)
+          const restoredListings = restoreFoundRentValues(listings)
+          setListings(restoredListings)
           setSearchPerformed(true)
           
           return true // Data was loaded
@@ -474,7 +504,9 @@ function App() {
         return true
       })
       
-      setListings(filteredListings)
+      // Restore found rent values for the new listings
+      const restoredListings = restoreFoundRentValues(filteredListings)
+      setListings(restoredListings)
       
       // Save search data to localStorage for reload persistence
       const searchParams = {
@@ -1018,6 +1050,19 @@ function App() {
                           city={getCityFromZipCode(zipCode)}
                           onSearchStart={() => setScrapingCard(listing.link)}
                           onSearchEnd={() => setScrapingCard(null)}
+                          onValueFound={(value) => {
+                            // Update das Listing mit dem gefundenen Mietpreis
+                            setListings(prevListings => {
+                              const updatedListings = prevListings.map(l => 
+                                l.link === listing.link 
+                                  ? { ...l, foundRentValue: value }
+                                  : l
+                              )
+                              // Speichere die gefundenen Werte persistent
+                              saveFoundRentValues(updatedListings)
+                              return updatedListings
+                            })
+                          }}
                         />
                         {scrapingCard === listing.link && (
                           <Box
@@ -1080,6 +1125,7 @@ function App() {
                                   price={listing.price}
                                   qm={listing.qm}
                                   city={getCityFromZipCode(zipCode)}
+                                  customRentValue={listing.foundRentValue}
                                 />
                               </Stack>
                             </Stack>

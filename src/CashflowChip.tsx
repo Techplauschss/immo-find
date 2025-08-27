@@ -8,9 +8,10 @@ interface CashflowChipProps {
   qm: string           // Fläche der Immobilie (z.B. "85,5 m²")
   city: string         // Stadt für Mietpreis-Bestimmung
   cashflowValue?: number  // Optional, falls manuell überschrieben
+  customRentValue?: number // Optional: benutzerdefinierter Mietpreis pro Monat
 }
 
-const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowValue }) => {
+const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowValue, customRentValue }) => {
   const { getRentPerSqm } = useCitySettings()
 
   const formatCurrency = (amount: number) => {
@@ -29,11 +30,16 @@ const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowVa
       // Parse Fläche
       const flaeche = parseFloat(qm.replace(',', '.'))
       
-      // Mietpreis pro m² pro Monat basierend auf Stadt (aus Context)
-      const mietpreisProQm = getRentPerSqm(city)
-      
       // 1. Mieteinnahmen pro Monat
-      const mieteinnahmen = mietpreisProQm * flaeche
+      let mieteinnahmen: number
+      if (customRentValue && customRentValue > 0) {
+        // Verwende benutzerdefinierten Mietpreis (bereits als Gesamtmiete pro Monat)
+        mieteinnahmen = customRentValue
+      } else {
+        // Berechne basierend auf Stadt-Settings
+        const mietpreisProQm = getRentPerSqm(city)
+        mieteinnahmen = mietpreisProQm * flaeche
+      }
       
       // 2. Annuität berechnen
       const eigenkapital = 10000
