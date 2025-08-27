@@ -321,6 +321,8 @@ function App() {
     setLoading(true)
     setError('')
     setSearchPerformed(true)
+    // Clear any existing listings to show fresh results
+    setListings([])
 
     try {
       // Build URL with optional parameters
