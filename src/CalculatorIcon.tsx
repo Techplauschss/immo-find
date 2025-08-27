@@ -1,6 +1,6 @@
 import React from 'react'
 import { IconButton, Tooltip } from '@mui/material'
-import { Casino } from '@mui/icons-material'
+import { Calculate } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 
 interface CalculatorIconProps {
@@ -51,7 +51,7 @@ const CalculatorIcon: React.FC<CalculatorIconProps> = ({ price, qm, sx }) => {
         }}
         size="medium"
       >
-        <Casino 
+        <Calculate 
           sx={{ 
             fontSize: 20,
             color: 'inherit'
