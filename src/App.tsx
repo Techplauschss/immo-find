@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Container,
   Typography,
@@ -139,6 +140,7 @@ const theme = createTheme({
 })
 
 function App() {
+  const navigate = useNavigate()
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [minArea, setMinArea] = useState('')
@@ -346,31 +348,52 @@ function App() {
       >
         <Container maxWidth="lg">
           {/* Header */}
-          <Box textAlign="center" mb={6}>
-            <Typography
-              variant="h2"
-              component="h1"
-              color="white"
-              gutterBottom
+          <Box sx={{ position: 'relative', mb: 6 }}>
+            {/* Rechner Button - Top Left */}
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/rechner')}
               sx={{
-                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                mb: 2,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                color: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  borderColor: 'white',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                },
               }}
             >
-              ImmoFind
-            </Typography>
-            <Typography
-              variant="h6"
-              color="white"
-              sx={{
-                maxWidth: 600,
-                mx: 'auto',
-                opacity: 0.9,
-                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-              }}
-            >
-              Finden Sie Ihre perfekte Immobilie mit unseren intelligenten Suchfiltern
-            </Typography>
+              Rechner
+            </Button>
+
+            <Box textAlign="center">
+              <Typography
+                variant="h2"
+                component="h1"
+                color="white"
+                gutterBottom
+                sx={{
+                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  mb: 2,
+                }}
+              >
+                ImmoFind
+              </Typography>
+              <Typography
+                variant="h6"
+                color="white"
+                sx={{
+                  maxWidth: 600,
+                  mx: 'auto',
+                  opacity: 0.9,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                }}
+              >
+                Finden Sie Ihre perfekte Immobilie mit unseren intelligenten Suchfiltern
+              </Typography>
+            </Box>
           </Box>
 
           {/* Search Form */}
