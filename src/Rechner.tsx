@@ -131,6 +131,28 @@ function Rechner() {
   const [monthlyAnnuity, setMonthlyAnnuity] = useState(0)
   const [showAnnuityOverview, setShowAnnuityOverview] = useState(false)
 
+  // URL-Parameter beim Laden der Komponente auslesen und Felder befüllen
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const priceParam = urlParams.get('price')
+    const qmParam = urlParams.get('qm')
+    
+    if (priceParam) {
+      // Formatiere den Preis in deutsches Format (ohne Euro-Symbol für Input-Felder)
+      const formattedPrice = new Intl.NumberFormat('de-DE').format(parseInt(priceParam))
+      setPurchasePrice(formattedPrice)
+    }
+    
+    if (qmParam) {
+      // Setze die Quadratmeter
+      const qm = parseFloat(qmParam)
+      setSquareMeters(qm.toString().replace('.', ','))
+    }
+
+    // Scrolle immer nach oben, wenn die Komponente geladen wird
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
   // Automatische Berechnung des Auto-Mietpreises basierend auf Stadt und QM
   useEffect(() => {
     // Nur automatisch berechnen, wenn kein manueller Preis eingegeben wurde

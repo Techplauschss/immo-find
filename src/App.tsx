@@ -28,6 +28,7 @@ import {
   LocationOn
 } from '@mui/icons-material'
 import './App.css'
+import CalculatorIcon from './CalculatorIcon'
 
 // Types
 interface Listing {
@@ -747,6 +748,7 @@ function App() {
                         onClick={() => window.open(listing.link, '_blank')}
                         sx={{
                           height: '100%',
+                          position: 'relative',
                           transition: 'all 0.3s ease-in-out',
                           cursor: 'pointer',
                           '&:hover': {
@@ -755,6 +757,10 @@ function App() {
                           },
                         }}
                       >
+                        <CalculatorIcon 
+                          price={listing.price}
+                          qm={listing.qm}
+                        />
                           <CardContent sx={{ p: 3 }}>
                             <Box sx={{ mb: 2 }}>
                               <Typography variant="h6" component="h4" color="primary" gutterBottom>
