@@ -19,12 +19,8 @@ import {
 } from '@mui/material'
 import {
   Euro,
-  Home,
-  Calculate,
   ArrowBack,
-  AccountBalance,
   Percent,
-  TrendingUp,
 } from '@mui/icons-material'
 
 // Material-UI Theme (gleicher wie in App.tsx)
@@ -110,19 +106,6 @@ const theme = createTheme({
   },
 })
 
-interface CalculationResults {
-  monthlyPayment: number
-  totalInterest: number
-  totalAmount: number
-  monthlyBreakdown: {
-    month: number
-    payment: number
-    interest: number
-    principal: number
-    remainingBalance: number
-  }[]
-}
-
 function Rechner() {
   const navigate = useNavigate()
   
@@ -135,15 +118,17 @@ function Rechner() {
   const [autoRentPrice, setAutoRentPrice] = useState('')
   const [manualRentPrice, setManualRentPrice] = useState('')
   const [selectedCity, setSelectedCity] = useState('Dresden')
-  const [interestRate, setInterestRate] = useState('3.5')
-  const [repaymentRateInput, setRepaymentRateInput] = useState('2.0')
-  const [loanTerm] = useState('30')
+  const [interestRate, setInterestRate] = useState('2,0')
+  const [repaymentRateInput, setRepaymentRateInput] = useState('2,0')
   
   // Berechnete Werte für die dritte Zeile
   const [financingAmount, setFinancingAmount] = useState('')
   
-  // Ergebnisse
-  const [results, setResults] = useState<CalculationResults | null>(null)
+  // Berechnete Werte für die Annuitätsübersicht
+  const [monthlyInterest, setMonthlyInterest] = useState(0)
+  const [monthlyPrincipal, setMonthlyPrincipal] = useState(0)
+  const [monthlyAnnuity, setMonthlyAnnuity] = useState(0)
+  const [showAnnuityOverview, setShowAnnuityOverview] = useState(false)
 
   // Automatische Berechnung des Auto-Mietpreises basierend auf Stadt und QM
   useEffect(() => {
@@ -193,72 +178,84 @@ function Rechner() {
     }
   }, [purchasePrice, downPayment])
 
-  const calculateMortgage = () => {
-    // Verwende die gleiche Parsing-Logik wie im useEffect
-    const parseFormattedNumber = (value: string) => {
-      if (!value) return 0
-      const cleaned = value.replace(/[^\d,.]/g, '')
-      const normalized = cleaned.replace(/\./g, '').replace(',', '.')
-      return parseFloat(normalized) || 0
+  // Automatische Berechnung der Annuität
+  useEffect(() => {
+
+    // Prüfen ob alle notwendigen Eingaben vorhanden sind
+    const qm = parseFloat(squareMeters.replace(',', '.')) || 0
+    const hasRentPrice = (autoRentPrice && autoRentPrice.trim() !== '') || (manualRentPrice && manualRentPrice.trim() !== '')
+    const financing = parseFormattedNumber(financingAmount)
+    const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) || 0
+    const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) || 0
+
+    console.log('Debug Annuität - QM:', qm, 'Mietpreis vorhanden:', hasRentPrice, 'Finanzierung:', financing)
+
+    if (financing > 0 && interestRateDecimal > 0 && repaymentRateDecimal > 0) {
+      // Zinsen pro Monat = Finanzierungsbetrag * Zinssatz p.A. / 12
+      const monthlyInterestCalc = (financing * interestRateDecimal / 100) / 12
+      
+      // Tilgung pro Monat = Finanzierungsbetrag * Tilgungssatz p.A. / 12
+      const monthlyPrincipalCalc = (financing * repaymentRateDecimal / 100) / 12
+      
+      // Annuität = Zinsen + Tilgung
+      const monthlyAnnuityCalc = monthlyInterestCalc + monthlyPrincipalCalc
+
+      setMonthlyInterest(monthlyInterestCalc)
+      setMonthlyPrincipal(monthlyPrincipalCalc)
+      setMonthlyAnnuity(monthlyAnnuityCalc)
+      setShowAnnuityOverview(true)
+
+      console.log('Debug Annuität berechnet - Zinsen:', monthlyInterestCalc, 'Tilgung:', monthlyPrincipalCalc, 'Gesamt:', monthlyAnnuityCalc)
+    } else {
+      setShowAnnuityOverview(false)
+      console.log('Debug Annuität - Bedingungen nicht erfüllt')
     }
-    
-    const price = parseFormattedNumber(purchasePrice)
-    const down = parseFormattedNumber(downPayment)
-    const rate = parseFloat(interestRate) / 100 / 12
-    const term = parseFloat(loanTerm) * 12
-    
-    if (!price || price <= 0) return
-    
-    const loanAmount = price - down
-    
-    if (loanAmount <= 0) return
-    
-    // Monatliche Rate berechnen
-    const monthlyPayment = loanAmount * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1)
-    
-    // Tilgungsplan erstellen
-    let remainingBalance = loanAmount
-    const monthlyBreakdown = []
-    let totalInterest = 0
-    
-    for (let month = 1; month <= term && remainingBalance > 0; month++) {
-      const interestPayment = remainingBalance * rate
-      const principalPayment = monthlyPayment - interestPayment
-      
-      totalInterest += interestPayment
-      remainingBalance -= principalPayment
-      
-      if (remainingBalance < 0) remainingBalance = 0
-      
-      monthlyBreakdown.push({
-        month,
-        payment: monthlyPayment,
-        interest: interestPayment,
-        principal: principalPayment,
-        remainingBalance
-      })
-    }
-    
-    setResults({
-      monthlyPayment,
-      totalInterest,
-      totalAmount: loanAmount + totalInterest,
-      monthlyBreakdown: monthlyBreakdown.slice(0, 12) // Nur erste 12 Monate anzeigen
-    })
-  }
+  }, [squareMeters, autoRentPrice, manualRentPrice, financingAmount, interestRate, repaymentRateInput])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
       currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount)
   }
 
+  // Globale Parsing-Funktion für deutsche Zahlenformatierung
+  const parseFormattedNumber = (value: string) => {
+    if (!value) return 0
+    // Entferne alle Nicht-Ziffern außer Kommas und Punkten
+    const cleaned = value.replace(/[^\d,.]/g, '')
+    // Konvertiere deutsche Formatierung (1.000,50) zu englischer (1000.50)
+    const normalized = cleaned.replace(/\./g, '').replace(',', '.')
+    return parseFloat(normalized) || 0
+  }
+
   const formatNumber = (num: string) => {
-    const cleaned = num.replace(/[^\d]/g, '')
-    return new Intl.NumberFormat('de-DE').format(parseInt(cleaned) || 0)
+    // Entferne alle ungültigen Zeichen außer Ziffern, Kommata und Punkte
+    let cleaned = num.replace(/[^\d.,]/g, '')
+    
+    // Verhindere Komma oder Punkt am Anfang
+    if (cleaned.startsWith(',') || cleaned.startsWith('.')) {
+      cleaned = cleaned.substring(1)
+    }
+    
+    // Wenn ein Komma vorhanden ist, keine automatische Formatierung
+    if (cleaned.includes(',')) {
+      return cleaned
+    }
+    
+    // Automatische Tausender-Formatierung für reine Zahlen
+    // Entferne alle Punkte und parse als Ganzzahl
+    const digitsOnly = cleaned.replace(/\./g, '')
+    if (digitsOnly.length > 0) {
+      const numericValue = parseInt(digitsOnly) || 0
+      if (!isNaN(numericValue)) {
+        return new Intl.NumberFormat('de-DE').format(numericValue)
+      }
+    }
+    
+    return cleaned
   }
 
   const handlePurchasePriceChange = (value: string) => {
@@ -339,11 +336,6 @@ function Rechner() {
             <Box sx={{ width: '100%', maxWidth: 900 }}>
               <Card>
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-                    <Calculate sx={{ mr: 2, color: 'primary.main' }} />
-                    Eingaben
-                  </Typography>
-
                   <Stack spacing={3}>
                     {/* Erste Zeile: Quadratmeter, Kaufpreis, Nicht umlagefähig, Umlagefähig */}
                     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
@@ -483,11 +475,12 @@ function Rechner() {
                         label="Zinssatz"
                         value={interestRate}
                         onChange={(e) => setInterestRate(e.target.value)}
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
                         InputProps={{
                           endAdornment: <InputAdornment position="end"><Percent /></InputAdornment>,
                         }}
-                        type="number"
-                        inputProps={{ step: "0.1", min: "0" }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: 'rgba(0, 0, 0, 0.04)',
@@ -500,11 +493,12 @@ function Rechner() {
                         label="Tilgungssatz"
                         value={repaymentRateInput}
                         onChange={(e) => setRepaymentRateInput(e.target.value)}
+                        InputLabelProps={{
+                          shrink: true,
+                        }}
                         InputProps={{
                           endAdornment: <InputAdornment position="end"><Percent /></InputAdornment>,
                         }}
-                        type="number"
-                        inputProps={{ step: "0.1", min: "0" }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: 'rgba(0, 0, 0, 0.04)',
@@ -516,6 +510,134 @@ function Rechner() {
                 </CardContent>
               </Card>
             </Box>
+
+            {/* Annuitätsübersicht - kompakte Darstellung */}
+            {showAnnuityOverview && (
+              <Box sx={{ width: '100%', maxWidth: 500 }}>
+                <Card>
+                  <CardContent sx={{ p: 2 }}>
+                    <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
+                      Monatliche Annuität
+                    </Typography>
+
+                    <Stack spacing={0.5}>
+                      {/* Zinsen pro Monat */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Zinsen pro Monat:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {formatCurrency(monthlyInterest)}
+                        </Typography>
+                      </Box>
+
+                      {/* Tilgung pro Monat */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Tilgung pro Monat:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {formatCurrency(monthlyPrincipal)}
+                        </Typography>
+                      </Box>
+
+                      {/* Trennlinie */}
+                      <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
+
+                      {/* Gesamtannuität */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          Gesamtannuität:
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          {formatCurrency(monthlyAnnuity)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Box>
+            )}
+
+            {/* Gesamtdaten - Übersichtskarte */}
+            {showAnnuityOverview && (
+              <Box sx={{ width: '100%', maxWidth: 500 }}>
+                <Card>
+                  <CardContent sx={{ p: 2 }}>
+                    <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
+                      Gesamtdaten
+                    </Typography>
+
+                    <Stack spacing={0.5}>
+                      {/* Mieteinnahmen */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Mieteinnahmen:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          + {(() => {
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            return formatCurrency(rentPrice)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Annuität p.M. */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Annuität p.M.:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          - {formatCurrency(monthlyAnnuity)}
+                        </Typography>
+                      </Box>
+
+                      {/* Nicht umlagefähig */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Nicht umlagefähig p.M.:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          - {(() => {
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            return formatCurrency(nonApportionableValue)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Trennlinie */}
+                      <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
+
+                      {/* Cashflow */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          Cashflow:
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
+                          const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                            ? parseFormattedNumber(manualRentPrice)
+                            : parseFormattedNumber(autoRentPrice)
+                          const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                          const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                          return cashflow >= 0 ? '#22c55e' : '#ef4444'
+                        })() }}>
+                          {(() => {
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            return formatCurrency(cashflow)
+                          })()}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Box>
+            )}
           </Stack>
         </Container>
       </Box>
