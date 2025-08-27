@@ -13,15 +13,6 @@ import {
   ThemeProvider,
   createTheme,
   CssBaseline,
-  Divider,
-  Chip,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   FormControl,
   Select,
   MenuItem,
@@ -145,8 +136,11 @@ function Rechner() {
   const [manualRentPrice, setManualRentPrice] = useState('')
   const [selectedCity, setSelectedCity] = useState('Dresden')
   const [interestRate, setInterestRate] = useState('3.5')
-  const [loanTerm, setLoanTerm] = useState('30')
-  const [additionalCosts, setAdditionalCosts] = useState('')
+  const [repaymentRateInput, setRepaymentRateInput] = useState('2.0')
+  const [loanTerm] = useState('30')
+  
+  // Berechnete Werte für die dritte Zeile
+  const [financingAmount, setFinancingAmount] = useState('')
   
   // Ergebnisse
   const [results, setResults] = useState<CalculationResults | null>(null)
@@ -154,7 +148,9 @@ function Rechner() {
   // Automatische Berechnung des Auto-Mietpreises basierend auf Stadt und QM
   useEffect(() => {
     // Nur automatisch berechnen, wenn kein manueller Preis eingegeben wurde
-    if (!manualRentPrice) {
+    const hasManualPrice = manualRentPrice && manualRentPrice.trim() !== '' && manualRentPrice !== '0'
+    
+    if (!hasManualPrice) {
       const qm = parseFloat(squareMeters.replace(',', '.')) || 0
       if (qm > 0) {
         const pricePerSqm = selectedCity === 'Dresden' ? 9.5 : 9.8
@@ -169,16 +165,51 @@ function Rechner() {
     }
   }, [squareMeters, selectedCity, manualRentPrice])
 
+  // Automatische Berechnung des Finanzierungsbetrags
+  useEffect(() => {
+    // Verbesserte Parsing-Logik für deutsche Zahlenformatierung
+    const parseFormattedNumber = (value: string) => {
+      if (!value) return 0
+      // Entferne alle Nicht-Ziffern außer Kommas und Punkten
+      const cleaned = value.replace(/[^\d,.]/g, '')
+      // Konvertiere deutsche Formatierung (1.000,50) zu englischer (1000.50)
+      const normalized = cleaned.replace(/\./g, '').replace(',', '.')
+      return parseFloat(normalized) || 0
+    }
+    
+    const price = parseFormattedNumber(purchasePrice)
+    const down = parseFormattedNumber(downPayment)
+    
+    console.log('Debug - Kaufpreis:', purchasePrice, '→', price)
+    console.log('Debug - Eigenkapital:', downPayment, '→', down)
+    
+    if (price > 0) {
+      // Finanzierungsbetrag berechnen
+      const financing = Math.max(0, price - down)
+      console.log('Debug - Finanzierungsbetrag:', financing)
+      setFinancingAmount(formatCurrency(financing))
+    } else {
+      setFinancingAmount('')
+    }
+  }, [purchasePrice, downPayment])
+
   const calculateMortgage = () => {
-    const price = parseFloat(purchasePrice.replace(/[,\s]/g, ''))
-    const down = parseFloat(downPayment.replace(/[,\s]/g, '')) || 0
+    // Verwende die gleiche Parsing-Logik wie im useEffect
+    const parseFormattedNumber = (value: string) => {
+      if (!value) return 0
+      const cleaned = value.replace(/[^\d,.]/g, '')
+      const normalized = cleaned.replace(/\./g, '').replace(',', '.')
+      return parseFloat(normalized) || 0
+    }
+    
+    const price = parseFormattedNumber(purchasePrice)
+    const down = parseFormattedNumber(downPayment)
     const rate = parseFloat(interestRate) / 100 / 12
     const term = parseFloat(loanTerm) * 12
-    const additional = parseFloat(additionalCosts.replace(/[,\s]/g, '')) || 0
     
     if (!price || price <= 0) return
     
-    const loanAmount = price - down + additional
+    const loanAmount = price - down
     
     if (loanAmount <= 0) return
     
@@ -238,10 +269,6 @@ function Rechner() {
     setDownPayment(formatNumber(value))
   }
 
-  const handleAdditionalCostsChange = (value: string) => {
-    setAdditionalCosts(formatNumber(value))
-  }
-
   const handleSquareMetersChange = (value: string) => {
     const cleaned = value.replace(/[^\d,]/g, '')
     setSquareMeters(cleaned)
@@ -256,7 +283,12 @@ function Rechner() {
   }
 
   const handleManualRentPriceChange = (value: string) => {
-    setManualRentPrice(formatNumber(value))
+    // Wenn der Wert leer ist oder nur Leerzeichen enthält, setze leeren String
+    if (!value || value.trim() === '') {
+      setManualRentPrice('')
+    } else {
+      setManualRentPrice(formatNumber(value))
+    }
   }
 
   return (
@@ -356,18 +388,8 @@ function Rechner() {
                       />
                     </Box>
 
-                    {/* Zweite Zeile: Eigenkapital, Auto-Mietpreis, Manueller Mietpreis und Zinssatz */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
-                      <TextField
-                        fullWidth
-                        label="Eigenkapital"
-                        value={downPayment}
-                        onChange={(e) => handleDownPaymentChange(e.target.value)}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
-                        }}
-                      />
-
+                    {/* Zweite Zeile: Auto-Mietpreis, Manueller Mietpreis */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
                       <Box sx={{ position: 'relative' }}>
                         <TextField
                           fullWidth
@@ -419,6 +441,42 @@ function Rechner() {
                           startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
                         }}
                       />
+                    </Box>
+
+                    {/* Dritte Zeile: Editierbare Berechnungsfelder */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+                      <TextField
+                        fullWidth
+                        label="Eigenkapital"
+                        value={downPayment}
+                        onChange={(e) => handleDownPaymentChange(e.target.value)}
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <TextField
+                        fullWidth
+                        label="Finanzierungsbetrag"
+                        value={financingAmount}
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                          readOnly: true,
+                        }}
+                        sx={{
+                          '& .MuiInputBase-input': {
+                            color: 'text.secondary',
+                          },
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
 
                       <TextField
                         fullWidth
@@ -430,175 +488,33 @@ function Rechner() {
                         }}
                         type="number"
                         inputProps={{ step: "0.1", min: "0" }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
                       />
-                    </Box>
 
-                    {/* Dritte Zeile: Laufzeit und Nebenkosten */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
                       <TextField
                         fullWidth
-                        label="Laufzeit"
-                        value={loanTerm}
-                        onChange={(e) => setLoanTerm(e.target.value)}
+                        label="Tilgungssatz"
+                        value={repaymentRateInput}
+                        onChange={(e) => setRepaymentRateInput(e.target.value)}
                         InputProps={{
-                          endAdornment: <InputAdornment position="end">Jahre</InputAdornment>,
+                          endAdornment: <InputAdornment position="end"><Percent /></InputAdornment>,
                         }}
                         type="number"
-                        inputProps={{ step: "1", min: "1" }}
-                      />
-
-                      <TextField
-                        fullWidth
-                        label="Nebenkosten (Notar, Grunderwerbsteuer, etc.)"
-                        value={additionalCosts}
-                        onChange={(e) => handleAdditionalCostsChange(e.target.value)}
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                        inputProps={{ step: "0.1", min: "0" }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                          },
                         }}
                       />
                     </Box>
-
-                    <Button
-                      variant="contained"
-                      size="large"
-                      onClick={calculateMortgage}
-                      startIcon={<Calculate />}
-                      sx={{ mt: 2, py: 1.5 }}
-                    >
-                      Berechnen
-                    </Button>
                   </Stack>
                 </CardContent>
               </Card>
-            </Box>
-
-            {/* Ergebnisse - unter dem Eingabeformular */}
-            <Box sx={{ width: '100%', maxWidth: 1000 }}>
-              {results && (
-                <Box 
-                  sx={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: { 
-                      xs: '1fr', 
-                      md: 'repeat(2, 1fr)' 
-                    }, 
-                    gap: 3 
-                  }}
-                >
-                  {/* Übersicht */}
-                  <Card>
-                    <CardContent sx={{ p: 4 }}>
-                      <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                        <TrendingUp sx={{ mr: 2, color: 'primary.main' }} />
-                        Finanzierungsübersicht
-                      </Typography>
-
-                      <Stack spacing={3}>
-                        <Box>
-                          <Typography variant="body2" color="text.secondary">
-                            Monatliche Rate
-                          </Typography>
-                          <Typography variant="h4" color="primary">
-                            {formatCurrency(results.monthlyPayment)}
-                          </Typography>
-                        </Box>
-
-                        <Divider />
-
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Gesamtzinsen
-                            </Typography>
-                            <Typography variant="h6">
-                              {formatCurrency(results.totalInterest)}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Gesamtkosten
-                            </Typography>
-                            <Typography variant="h6">
-                              {formatCurrency(results.totalAmount)}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Box sx={{ mt: 2 }}>
-                          <Stack direction="row" spacing={1} flexWrap="wrap">
-                            <Chip
-                              icon={<Home />}
-                              label={`Darlehenssumme: ${formatCurrency(
-                                parseFloat(purchasePrice.replace(/[,\s]/g, '')) - 
-                                parseFloat(downPayment.replace(/[,\s]/g, '') || '0') +
-                                parseFloat(additionalCosts.replace(/[,\s]/g, '') || '0')
-                              )}`}
-                              variant="outlined"
-                              color="primary"
-                            />
-                            <Chip
-                              icon={<AccountBalance />}
-                              label={`${interestRate}% Zinsen`}
-                              variant="outlined"
-                              color="secondary"
-                            />
-                            <Chip
-                              label={`${loanTerm} Jahre Laufzeit`}
-                              variant="outlined"
-                            />
-                          </Stack>
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-
-                  {/* Tilgungsplan */}
-                  <Card>
-                    <CardContent sx={{ p: 4 }}>
-                      <Typography variant="h6" gutterBottom>
-                        Tilgungsplan (erste 12 Monate)
-                      </Typography>
-                      
-                      <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Monat</TableCell>
-                              <TableCell align="right">Rate</TableCell>
-                              <TableCell align="right">Zinsen</TableCell>
-                              <TableCell align="right">Tilgung</TableCell>
-                              <TableCell align="right">Restschuld</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {results.monthlyBreakdown.map((row) => (
-                              <TableRow key={row.month}>
-                                <TableCell>{row.month}</TableCell>
-                                <TableCell align="right">{formatCurrency(row.payment)}</TableCell>
-                                <TableCell align="right">{formatCurrency(row.interest)}</TableCell>
-                                <TableCell align="right">{formatCurrency(row.principal)}</TableCell>
-                                <TableCell align="right">{formatCurrency(row.remainingBalance)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-                </Box>
-              )}              {!results && (
-                <Card sx={{ height: 'fit-content' }}>
-                  <CardContent sx={{ p: 4, textAlign: 'center' }}>
-                    <Calculate sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">
-                      Geben Sie Ihre Daten ein und klicken Sie auf "Berechnen"
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      Der Rechner berechnet Ihre monatliche Rate und erstellt einen detaillierten Tilgungsplan
-                    </Typography>
-                  </CardContent>
-                </Card>
-              )}
             </Box>
           </Stack>
         </Container>
