@@ -295,7 +295,27 @@ function Rechner() {
       <Box
         sx={{
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: (() => {
+            // Cashflow berechnen für Hintergrundfarbe
+            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+              ? parseFormattedNumber(manualRentPrice)
+              : parseFormattedNumber(autoRentPrice)
+            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+            const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+            
+            if (showAnnuityOverview) {
+              // Grüner Gradient bei positivem Cashflow
+              if (cashflow >= 0) {
+                return 'linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%)'
+              }
+              // Rötlicher Gradient bei negativem Cashflow
+              else {
+                return 'linear-gradient(135deg, #f87171 0%, #ef4444 50%, #dc2626 100%)'
+              }
+            }
+            // Standard Gradient wenn keine Berechnung verfügbar
+            return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          })(),
           py: 4,
         }}
       >
@@ -612,7 +632,22 @@ function Rechner() {
                         <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
 
                         {/* Cashflow */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          backgroundColor: (() => {
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            return cashflow >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                          })(),
+                          borderRadius: 1,
+                          px: 1,
+                          py: 0.5
+                        }}>
                           <Typography variant="body1" sx={{ fontWeight: 600 }}>
                             Cashflow:
                           </Typography>
