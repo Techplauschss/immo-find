@@ -46,8 +46,31 @@ const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowVa
       // Cashflow berechnen
       const cashflow = mieteinnahmen - annuitaetProMonat - nichtUmlagefahigeKostenProMonat
       
+      // Debug-Ausgaben in der Konsole
+      console.group(`🏠 Cashflow-Berechnung für ${price} | ${qm} | ${city}`)
+      console.log(`📊 Kaufpreis: ${kaufpreis.toLocaleString('de-DE')} €`)
+      console.log(`📐 Fläche: ${flaeche} m²`)
+      console.log(`🏙️ Stadt: ${city}`)
+      console.log(`💰 Mietpreis pro m²: ${mietpreisProQm} €/m²`)
+      console.log(``)
+      console.log(`📈 Berechnung:`)
+      console.log(`   💵 Mieteinnahmen: ${flaeche} m² × ${mietpreisProQm} €/m² = ${mieteinnahmen.toFixed(2)} €/Monat`)
+      console.log(`   🏦 Eigenkapital: ${eigenkapital.toLocaleString('de-DE')} €`)
+      console.log(`   💳 Darlehen: ${kaufpreis.toLocaleString('de-DE')} € - ${eigenkapital.toLocaleString('de-DE')} € = ${darlehen.toLocaleString('de-DE')} €`)
+      console.log(`   📋 Zinssatz: ${zinssatz * 100}% p.A.`)
+      console.log(`   📋 Tilgungssatz: ${tilgungssatz * 100}% p.A.`)
+      console.log(`   💸 Annuität: ${darlehen.toLocaleString('de-DE')} € × ${gesamtrate * 100}% ÷ 12 = ${annuitaetProMonat.toFixed(2)} €/Monat`)
+      console.log(`   🔧 Nicht umlagefähige Kosten: ${kaufpreis.toLocaleString('de-DE')} € × 1,5% ÷ 12 = ${nichtUmlagefahigeKostenProMonat.toFixed(2)} €/Monat`)
+      console.log(``)
+      console.log(`🎯 Cashflow-Ergebnis:`)
+      console.log(`   ${mieteinnahmen.toFixed(2)} € - ${annuitaetProMonat.toFixed(2)} € - ${nichtUmlagefahigeKostenProMonat.toFixed(2)} € = ${cashflow.toFixed(2)} €`)
+      console.log(`   ➡️ Kaufmännisch gerundet: ${Math.round(cashflow)} €`)
+      console.groupEnd()
+      
+      // Kaufmännisches Runden (bereits durch Math.round implementiert)
       return Math.round(cashflow)
     } catch (error) {
+      console.error(`❌ Fehler bei Cashflow-Berechnung für ${price} | ${qm}:`, error)
       // Fallback auf Dummywert bei Parsing-Fehlern
       return 100
     }

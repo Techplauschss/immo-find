@@ -141,6 +141,19 @@ function Rechner() {
       // Formatiere den Preis in deutsches Format (ohne Euro-Symbol für Input-Felder)
       const formattedPrice = new Intl.NumberFormat('de-DE').format(parseInt(priceParam))
       setPurchasePrice(formattedPrice)
+      
+      // Berechne automatisch die nicht umlagefähigen Kosten (1,5% des Kaufpreises pro Jahr / 12 Monate)
+      const price = parseInt(priceParam)
+      const nonApportionableMonthly = (price * 0.015) / 12
+      const formattedNonApportionable = new Intl.NumberFormat('de-DE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(nonApportionableMonthly)
+      setNonApportionable(formattedNonApportionable)
+      
+      // Setze standardmäßig 10.000 € Eigenkapital
+      const formattedDownPayment = new Intl.NumberFormat('de-DE').format(10000)
+      setDownPayment(formattedDownPayment)
     }
     
     if (qmParam) {
