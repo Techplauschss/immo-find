@@ -120,6 +120,7 @@ function Rechner() {
   const [selectedCity, setSelectedCity] = useState('Dresden')
   const [interestRate, setInterestRate] = useState('2,0')
   const [repaymentRateInput, setRepaymentRateInput] = useState('2,0')
+  const [runtime, setRuntime] = useState('20')
   
   // Berechnete Werte für die dritte Zeile
   const [financingAmount, setFinancingAmount] = useState('')
@@ -511,125 +512,413 @@ function Rechner() {
               </Card>
             </Box>
 
-            {/* Annuitätsübersicht - kompakte Darstellung */}
+            {/* Annuitätsübersicht und Gesamtdaten - nebeneinander */}
             {showAnnuityOverview && (
-              <Box sx={{ width: '100%', maxWidth: 500 }}>
-                <Card>
-                  <CardContent sx={{ p: 2 }}>
-                    <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
-                      Monatliche Annuität
-                    </Typography>
+              <Box sx={{ width: '100%', maxWidth: 1000, display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
+                {/* Monatliche Annuität */}
+                <Box sx={{ flex: 1 }}>
+                  <Card>
+                    <CardContent sx={{ p: 2 }}>
+                      <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
+                        Monatliche Annuität
+                      </Typography>
 
-                    <Stack spacing={0.5}>
-                      {/* Zinsen pro Monat */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Zinsen pro Monat:
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {formatCurrency(monthlyInterest)}
-                        </Typography>
-                      </Box>
+                      <Stack spacing={0.5}>
+                        {/* Zinsen pro Monat */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Zinsen pro Monat:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {formatCurrency(monthlyInterest)}
+                          </Typography>
+                        </Box>
 
-                      {/* Tilgung pro Monat */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Tilgung pro Monat:
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {formatCurrency(monthlyPrincipal)}
-                        </Typography>
-                      </Box>
+                        {/* Tilgung pro Monat */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Tilgung pro Monat:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {formatCurrency(monthlyPrincipal)}
+                          </Typography>
+                        </Box>
 
-                      {/* Trennlinie */}
-                      <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
+                        {/* Trennlinie */}
+                        <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
 
-                      {/* Gesamtannuität */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          Gesamtannuität:
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {formatCurrency(monthlyAnnuity)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Box>
-            )}
+                        {/* Gesamtannuität */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            Gesamtannuität:
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            {formatCurrency(monthlyAnnuity)}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Box>
 
-            {/* Gesamtdaten - Übersichtskarte */}
-            {showAnnuityOverview && (
-              <Box sx={{ width: '100%', maxWidth: 500 }}>
-                <Card>
-                  <CardContent sx={{ p: 2 }}>
-                    <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
-                      Gesamtdaten
-                    </Typography>
+                {/* Gesamtdaten */}
+                <Box sx={{ flex: 1 }}>
+                  <Card>
+                    <CardContent sx={{ p: 2 }}>
+                      <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
+                        Gesamtdaten
+                      </Typography>
 
-                    <Stack spacing={0.5}>
-                      {/* Mieteinnahmen */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Mieteinnahmen:
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          + {(() => {
-                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
-                              ? parseFormattedNumber(manualRentPrice)
-                              : parseFormattedNumber(autoRentPrice)
-                            return formatCurrency(rentPrice)
-                          })()}
-                        </Typography>
-                      </Box>
+                      <Stack spacing={0.5}>
+                        {/* Mieteinnahmen */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Mieteinnahmen:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            + {(() => {
+                              const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                                ? parseFormattedNumber(manualRentPrice)
+                                : parseFormattedNumber(autoRentPrice)
+                              return formatCurrency(rentPrice)
+                            })()}
+                          </Typography>
+                        </Box>
 
-                      {/* Annuität p.M. */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Annuität p.M.:
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          - {formatCurrency(monthlyAnnuity)}
-                        </Typography>
-                      </Box>
+                        {/* Annuität p.M. */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Annuität p.M.:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            - {formatCurrency(monthlyAnnuity)}
+                          </Typography>
+                        </Box>
 
-                      {/* Nicht umlagefähig */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Nicht umlagefähig p.M.:
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          - {(() => {
-                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                            return formatCurrency(nonApportionableValue)
-                          })()}
-                        </Typography>
-                      </Box>
+                        {/* Nicht umlagefähig */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Nicht umlagefähig p.M.:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            - {(() => {
+                              const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                              return formatCurrency(nonApportionableValue)
+                            })()}
+                          </Typography>
+                        </Box>
 
-                      {/* Trennlinie */}
-                      <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
+                        {/* Trennlinie */}
+                        <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
 
-                      {/* Cashflow */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          Cashflow:
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
-                          const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
-                            ? parseFormattedNumber(manualRentPrice)
-                            : parseFormattedNumber(autoRentPrice)
-                          const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                          const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-                          return cashflow >= 0 ? '#22c55e' : '#ef4444'
-                        })() }}>
-                          {(() => {
+                        {/* Cashflow */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            Cashflow:
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
                             const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
                               ? parseFormattedNumber(manualRentPrice)
                               : parseFormattedNumber(autoRentPrice)
                             const nonApportionableValue = parseFormattedNumber(nonApportionable)
                             const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-                            return formatCurrency(cashflow)
+                            return cashflow >= 0 ? '#22c55e' : '#ef4444'
+                          })() }}>
+                            {(() => {
+                              const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                                ? parseFormattedNumber(manualRentPrice)
+                                : parseFormattedNumber(autoRentPrice)
+                              const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                              const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                              return formatCurrency(cashflow)
+                            })()}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            )}
+
+            {/* Eigenkapitalrendite - drittes Kästchen */}
+            {showAnnuityOverview && (
+              <Box sx={{ width: '100%', maxWidth: 600 }}>
+                <Card>
+                  <CardContent sx={{ p: 2 }}>
+                    <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
+                      Eigenkapitalrendite
+                    </Typography>
+
+                    <Stack spacing={0.5}>
+                      {/* Cashflow p.A. */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Cashflow p.A.:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            const annualCashflow = monthlyCashflow * 12
+                            return formatCurrency(annualCashflow)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Laufzeit */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Laufzeit (Jahre):
+                        </Typography>
+                        <TextField
+                          size="small"
+                          value={runtime}
+                          onChange={(e) => setRuntime(e.target.value)}
+                          sx={{ 
+                            width: 100,
+                            '& .MuiOutlinedInput-root': {
+                              height: 32,
+                            },
+                            '& .MuiOutlinedInput-input': {
+                              textAlign: 'right',
+                            }
+                          }}
+                        />
+                      </Box>
+
+                      {/* Restschuld */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Restschuld:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const financing = parseFormattedNumber(financingAmount) // C11
+                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100 // E11
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0 // G16
+                            const monthlyRate = monthlyAnnuity // I11
+
+                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                              // Formel: RUNDEN(C11*(1+E11/12)^(12*G16) - I11 * (((1+E11/12)^(12*G16)-1) / (E11/12));0)
+                              const monthlyInterestRate = interestRateDecimal / 12
+                              const totalMonths = 12 * runtimeYears
+                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                              
+                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                              
+                              return formatCurrency(Math.round(remainingDebt))
+                            }
+                            return formatCurrency(0)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Verkaufspreis */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Verkaufspreis:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const price = parseFormattedNumber(purchasePrice)
+                            return formatCurrency(price)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Nettoerlös nach Verkauf */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Nettoerlös nach Verkauf:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const salePrice = parseFormattedNumber(purchasePrice)
+                            const financing = parseFormattedNumber(financingAmount)
+                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const monthlyRate = monthlyAnnuity
+
+                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                              // Restschuld berechnen
+                              const monthlyInterestRate = interestRateDecimal / 12
+                              const totalMonths = 12 * runtimeYears
+                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                              
+                              // Nettoerlös = Verkaufspreis - Restschuld
+                              const netProceeds = salePrice - Math.round(remainingDebt)
+                              
+                              return formatCurrency(netProceeds)
+                            }
+                            return formatCurrency(salePrice)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Gesamtertrag */}
+                      <Box sx={{ borderTop: 1, borderColor: 'divider', my: 0.5 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          Gesamtertrag:
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#22c55e' }}>
+                          {(() => {
+                            const salePrice = parseFormattedNumber(purchasePrice)
+                            const financing = parseFormattedNumber(financingAmount)
+                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const monthlyRate = monthlyAnnuity
+
+                            // Cashflow p.A. berechnen
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            const annualCashflow = monthlyCashflow * 12
+
+                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                              // Restschuld berechnen
+                              const monthlyInterestRate = interestRateDecimal / 12
+                              const totalMonths = 12 * runtimeYears
+                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                              
+                              // Nettoerlös = Verkaufspreis - Restschuld
+                              const netProceeds = salePrice - Math.round(remainingDebt)
+                              
+                              // Gesamtertrag = Nettoerlös + (Cashflow p.a. * Laufzeit)
+                              const totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                              
+                              return formatCurrency(totalReturn)
+                            }
+                            return formatCurrency(salePrice + (annualCashflow * runtimeYears))
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* CAGR */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          CAGR:
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#22c55e' }}>
+                          {(() => {
+                            const salePrice = parseFormattedNumber(purchasePrice)
+                            const financing = parseFormattedNumber(financingAmount)
+                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const monthlyRate = monthlyAnnuity
+                            const eigenkapital = parseFormattedNumber(downPayment) // B11 - Eigenanteil
+
+                            // Cashflow p.A. berechnen (G15)
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            const annualCashflow = monthlyCashflow * 12 // G15
+
+                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
+                              // Restschuld berechnen
+                              const monthlyInterestRate = interestRateDecimal / 12
+                              const totalMonths = 12 * runtimeYears
+                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                              
+                              // Nettoerlös = Verkaufspreis - Restschuld (G19)
+                              const netProceeds = salePrice - Math.round(remainingDebt) // G19
+                              
+                              // CAGR = POTENZ( (G15*G16 + G19) / B11 ; 1 / G16 ) - 1
+                              const totalCashflows = annualCashflow * runtimeYears // G15 * G16
+                              const totalReturn = totalCashflows + netProceeds // (G15*G16 + G19)
+                              const cagr = Math.pow(totalReturn / eigenkapital, 1 / runtimeYears) - 1
+                              
+                              return (cagr * 100).toFixed(2) + '%'
+                            }
+                            return '0,00%'
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* IRR/IKV - Effektive Rendite */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          Effektive Rendite (IRR):
+                        </Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#22c55e' }}>
+                          {(() => {
+                            const salePrice = parseFormattedNumber(purchasePrice)
+                            const financing = parseFormattedNumber(financingAmount)
+                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const monthlyRate = monthlyAnnuity
+                            const eigenkapital = parseFormattedNumber(downPayment)
+
+                            // Cashflow p.A. berechnen
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            const annualCashflow = monthlyCashflow * 12
+
+                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
+                              // Restschuld berechnen
+                              const monthlyInterestRate = interestRateDecimal / 12
+                              const totalMonths = 12 * runtimeYears
+                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                              
+                              // Nettoerlös = Verkaufspreis - Restschuld
+                              const netProceeds = salePrice - Math.round(remainingDebt)
+                              
+                              // IRR Berechnung über Newton-Raphson Verfahren
+                              // Cashflows: Jahr 0: -Eigenkapital, Jahre 1-n: annualCashflow, Jahr n: annualCashflow + netProceeds
+                              const calculateIRR = (cashflows: number[], guess = 0.1) => {
+                                const maxIterations = 100
+                                const tolerance = 1e-6
+                                
+                                for (let i = 0; i < maxIterations; i++) {
+                                  let npv = 0
+                                  let dnpv = 0
+                                  
+                                  for (let t = 0; t < cashflows.length; t++) {
+                                    const factor = Math.pow(1 + guess, t)
+                                    npv += cashflows[t] / factor
+                                    if (t > 0) {
+                                      dnpv -= t * cashflows[t] / Math.pow(1 + guess, t + 1)
+                                    }
+                                  }
+                                  
+                                  if (Math.abs(npv) < tolerance) return guess
+                                  
+                                  const newGuess = guess - npv / dnpv
+                                  if (Math.abs(newGuess - guess) < tolerance) return newGuess
+                                  
+                                  guess = newGuess
+                                }
+                                
+                                return guess
+                              }
+                              
+                              // Cashflow Array erstellen
+                              const cashflows = [-eigenkapital] // Jahr 0: Investition
+                              for (let year = 1; year < runtimeYears; year++) {
+                                cashflows.push(annualCashflow) // Jahre 1 bis n-1: jährlicher Cashflow
+                              }
+                              cashflows.push(annualCashflow + netProceeds) // Jahr n: Cashflow + Verkaufserlös
+                              
+                              const irr = calculateIRR(cashflows)
+                              
+                              return (irr * 100).toFixed(2) + '%'
+                            }
+                            return '0,00%'
                           })()}
                         </Typography>
                       </Box>
