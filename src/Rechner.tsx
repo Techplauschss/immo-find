@@ -189,9 +189,9 @@ function Rechner() {
     const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) || 0
     const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) || 0
 
-    console.log('Debug Annuität - QM:', qm, 'Mietpreis vorhanden:', hasRentPrice, 'Finanzierung:', financing)
+    console.log('Debug Annuität - QM:', qm, 'Mietpreis vorhanden:', hasRentPrice, 'Finanzierung:', financing, 'Zinssatz:', interestRateDecimal, 'Tilgung:', repaymentRateDecimal)
 
-    if (financing > 0 && interestRateDecimal > 0 && repaymentRateDecimal > 0) {
+    if (financing > 100 && interestRateDecimal > 0 && repaymentRateDecimal > 0) {
       // Zinsen pro Monat = Finanzierungsbetrag * Zinssatz p.A. / 12
       const monthlyInterestCalc = (financing * interestRateDecimal / 100) / 12
       
