@@ -19,9 +19,7 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  FormControlLabel,
-  Checkbox
+  MenuItem
 } from '@mui/material'
 import {
   Search,
@@ -825,26 +823,62 @@ function App() {
                   </Typography>
 
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                    {/* Cashflow Filter Checkbox */}
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={showOnlyPositiveCashflow}
-                          onChange={(e) => setShowOnlyPositiveCashflow(e.target.checked)}
-                          sx={{
-                            color: 'white',
-                            '&.Mui-checked': {
-                              color: '#22c55e', // Green color matching positive cashflow
-                            },
-                          }}
-                        />
-                      }
-                      label={
-                        <Typography sx={{ color: 'white', fontSize: '0.9rem' }}>
-                          Nur positive Cashflows
-                        </Typography>
-                      }
-                    />
+                    {/* Cashflow Filter Toggle Button - only show when listings exist */}
+                    {listings.length > 0 && (
+                      <Button
+                        variant="contained"
+                        onClick={() => setShowOnlyPositiveCashflow(!showOnlyPositiveCashflow)}
+                        startIcon={
+                          <Box
+                            sx={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              backgroundColor: showOnlyPositiveCashflow ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                              border: showOnlyPositiveCashflow ? 'none' : '1.5px solid rgba(255, 255, 255, 0.6)',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: showOnlyPositiveCashflow ? 'scale(1)' : 'scale(0.8)',
+                            }}
+                          />
+                        }
+                        sx={{
+                          borderRadius: '25px',
+                          px: 4,
+                          py: 1.5,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          fontSize: '0.875rem',
+                          minWidth: 'auto',
+                          whiteSpace: 'nowrap',
+                          background: showOnlyPositiveCashflow 
+                            ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                            : 'rgba(255, 255, 255, 0.15)',
+                          backdropFilter: 'blur(10px)',
+                          border: showOnlyPositiveCashflow 
+                            ? 'none' 
+                            : '1px solid rgba(255, 255, 255, 0.2)',
+                          color: 'white',
+                          boxShadow: showOnlyPositiveCashflow 
+                            ? '0 8px 25px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                            : '0 4px 15px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                          '&:hover': {
+                            background: showOnlyPositiveCashflow 
+                              ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)'
+                              : 'rgba(255, 255, 255, 0.25)',
+                            transform: 'translateY(-2px) scale(1.02)',
+                            boxShadow: showOnlyPositiveCashflow 
+                              ? '0 12px 35px rgba(34, 197, 94, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                              : '0 8px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                          },
+                          '&:active': {
+                            transform: 'translateY(-1px) scale(0.98)',
+                          },
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        }}
+                      >
+                        Nur positive Cashflows
+                      </Button>
+                    )}
 
                     {/* Sorting Dropdown */}
                     {listings.length > 0 && (
