@@ -150,10 +150,99 @@ function App() {
   const [searchPerformed, setSearchPerformed] = useState(false)
   const [sortBy, setSortBy] = useState('')
 
-  // Load average price on component mount
+  // Storage keys for localStorage
+  const STORAGE_KEYS = {
+    searchData: 'immo-find-search-data',
+    searchParams: 'immo-find-search-params',
+    lastSearch: 'immo-find-last-search'
+  }
+
+  // Save search data to localStorage
+  const saveSearchData = (searchData: { listings: Listing[], searchParams: any, sortBy: string }) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.searchData, JSON.stringify(searchData.listings))
+      localStorage.setItem(STORAGE_KEYS.searchParams, JSON.stringify(searchData.searchParams))
+      localStorage.setItem(STORAGE_KEYS.lastSearch, Date.now().toString())
+    } catch (error) {
+      console.error('Fehler beim Speichern der Suchdaten:', error)
+    }
+  }
+
+  // Load search data from localStorage
+  const loadSearchData = () => {
+    try {
+      const savedListings = localStorage.getItem(STORAGE_KEYS.searchData)
+      const savedParams = localStorage.getItem(STORAGE_KEYS.searchParams)
+      const lastSearchTime = localStorage.getItem(STORAGE_KEYS.lastSearch)
+
+      // Check if data exists and is not older than 1 hour
+      if (savedListings && savedParams && lastSearchTime) {
+        const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
+        const timeDifference = Date.now() - parseInt(lastSearchTime)
+        
+        if (timeDifference < oneHour) {
+          const listings: Listing[] = JSON.parse(savedListings)
+          const params = JSON.parse(savedParams)
+          
+          // Restore search parameters
+          setMinPrice(params.minPrice || '')
+          setMaxPrice(params.maxPrice || '')
+          setMinArea(params.minArea || '')
+          setMaxArea(params.maxArea || '')
+          setMinPricePerSqm(params.minPricePerSqm || '')
+          setMaxPricePerSqm(params.maxPricePerSqm || '')
+          setZipCode(params.zipCode || '01069')
+          setRadius(params.radius || '')
+          setSortBy(params.sortBy || '')
+          
+          // Restore listings and search state
+          setListings(listings)
+          setSearchPerformed(true)
+          
+          return true // Data was loaded
+        }
+      }
+    } catch (error) {
+      console.error('Fehler beim Laden der Suchdaten:', error)
+    }
+    return false // No data was loaded
+  }
+
+  // Load search data and average price on component mount
   useEffect(() => {
-    fetchAveragePrice('01069')
+    const dataLoaded = loadSearchData()
+    
+    // If no data was loaded, fetch average price for default city
+    if (!dataLoaded) {
+      fetchAveragePrice('01069')
+    } else {
+      // If data was loaded, fetch average price for the restored zipCode
+      fetchAveragePrice(zipCode)
+    }
   }, [])
+
+  // Update localStorage when sortBy changes and we have listings
+  useEffect(() => {
+    if (listings.length > 0 && searchPerformed) {
+      const searchParams = {
+        minPrice,
+        maxPrice,
+        minArea,
+        maxArea,
+        minPricePerSqm,
+        maxPricePerSqm,
+        zipCode,
+        radius,
+        sortBy
+      }
+      
+      saveSearchData({
+        listings,
+        searchParams,
+        sortBy
+      })
+    }
+  }, [sortBy])
 
   const sortListings = (listingsToSort: Listing[]) => {
     if (!sortBy) return listingsToSort
@@ -336,6 +425,26 @@ function App() {
       })
       
       setListings(filteredListings)
+      
+      // Save search data to localStorage for reload persistence
+      const searchParams = {
+        minPrice,
+        maxPrice,
+        minArea,
+        maxArea,
+        minPricePerSqm,
+        maxPricePerSqm,
+        zipCode,
+        radius,
+        sortBy
+      }
+      
+      saveSearchData({
+        listings: filteredListings,
+        searchParams,
+        sortBy
+      })
+      
     } catch (err) {
       setError('Fehler beim Laden der Immobilien. Bitte versuchen Sie es später erneut.')
       console.error('API Error:', err)
@@ -642,7 +751,7 @@ function App() {
                     </Stack>
                   </Stack>
 
-                  {/* Search Button */}
+                    {/* Search Button */}
                   <Button
                     fullWidth
                     variant="contained"
