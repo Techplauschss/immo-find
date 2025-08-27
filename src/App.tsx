@@ -39,6 +39,7 @@ interface Listing {
   location: string
   link: string
   foundRentValue?: number // Optional: gefundener Mietpreis durch Scraping
+  searchFailed?: boolean // Optional: ob die Suche fehlgeschlagen ist
 }
 
 interface ApiResponse {
@@ -163,12 +164,19 @@ function App() {
   // LocalStorage functions for persistent found rent values
   const saveFoundRentValues = (listings: Listing[]) => {
     const rentValues: { [link: string]: number } = {}
+    const failedSearches: { [link: string]: boolean } = {}
+    
     listings.forEach(listing => {
       if (listing.foundRentValue && listing.foundRentValue > 0) {
         rentValues[listing.link] = listing.foundRentValue
       }
+      if (listing.searchFailed) {
+        failedSearches[listing.link] = true
+      }
     })
+    
     localStorage.setItem('foundRentValues', JSON.stringify(rentValues))
+    localStorage.setItem('failedSearches', JSON.stringify(failedSearches))
   }
 
   const loadFoundRentValues = (): { [link: string]: number } => {
@@ -180,11 +188,23 @@ function App() {
     }
   }
 
+  const loadFailedSearches = (): { [link: string]: boolean } => {
+    try {
+      const saved = localStorage.getItem('failedSearches')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  }
+
   const restoreFoundRentValues = (listings: Listing[]): Listing[] => {
     const savedValues = loadFoundRentValues()
+    const failedSearches = loadFailedSearches()
+    
     return listings.map(listing => ({
       ...listing,
-      foundRentValue: savedValues[listing.link] || listing.foundRentValue
+      foundRentValue: savedValues[listing.link] || listing.foundRentValue,
+      searchFailed: failedSearches[listing.link] || listing.searchFailed
     }))
   }
   const [sortBy, setSortBy] = useState('')
@@ -1048,17 +1068,44 @@ function App() {
                           link={listing.link}
                           qm={listing.qm}
                           city={getCityFromZipCode(zipCode)}
-                          onSearchStart={() => setScrapingCard(listing.link)}
+                          hasFoundValue={listing.foundRentValue !== undefined && listing.foundRentValue > 0}
+                          searchFailed={listing.searchFailed === true}
+                          onSearchStart={() => {
+                            setScrapingCard(listing.link)
+                            // Setze searchFailed zurück, wenn ein neuer Versuch gestartet wird
+                            if (listing.searchFailed) {
+                              setListings(prevListings => 
+                                prevListings.map(l => 
+                                  l.link === listing.link 
+                                    ? { ...l, searchFailed: false }
+                                    : l
+                                )
+                              )
+                            }
+                          }}
                           onSearchEnd={() => setScrapingCard(null)}
                           onValueFound={(value) => {
                             // Update das Listing mit dem gefundenen Mietpreis
                             setListings(prevListings => {
                               const updatedListings = prevListings.map(l => 
                                 l.link === listing.link 
-                                  ? { ...l, foundRentValue: value }
+                                  ? { ...l, foundRentValue: value, searchFailed: false }
                                   : l
                               )
                               // Speichere die gefundenen Werte persistent
+                              saveFoundRentValues(updatedListings)
+                              return updatedListings
+                            })
+                          }}
+                          onSearchFailed={() => {
+                            // Markiere die Suche als fehlgeschlagen
+                            setListings(prevListings => {
+                              const updatedListings = prevListings.map(l => 
+                                l.link === listing.link 
+                                  ? { ...l, searchFailed: true, foundRentValue: undefined }
+                                  : l
+                              )
+                              // Speichere die fehlgeschlagenen Suchen persistent
                               saveFoundRentValues(updatedListings)
                               return updatedListings
                             })

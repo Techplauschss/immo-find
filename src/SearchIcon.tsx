@@ -11,9 +11,12 @@ interface SearchIconProps {
   onSearchStart?: () => void
   onSearchEnd?: () => void
   onValueFound?: (value: number) => void // Callback für gefundenen Wert
+  onSearchFailed?: () => void // Callback für fehlgeschlagene Suche
+  hasFoundValue?: boolean // Ob bereits ein Wert gefunden wurde
+  searchFailed?: boolean // Ob die Suche fehlgeschlagen ist
 }
 
-const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchStart, onSearchEnd, onValueFound }) => {
+const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchStart, onSearchEnd, onValueFound, onSearchFailed, hasFoundValue, searchFailed }) => {
   const [loading, setLoading] = useState(false)
   const { getRentPerSqm } = useCitySettings()
 
@@ -69,21 +72,53 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
         // Callback aufrufen, wenn ein Wert > 0 gefunden wurde
         if (finalValue > 0 && onValueFound) {
           onValueFound(finalValue)
+        } else if (onSearchFailed) {
+          // Callback aufrufen, wenn kein Wert gefunden wurde
+          onSearchFailed()
         }
       } else {
         console.log('Keine Werte in der API-Antwort gefunden')
+        // Callback aufrufen, wenn keine Werte in der API-Antwort gefunden wurden
+        if (onSearchFailed) {
+          onSearchFailed()
+        }
       }
       
     } catch (error) {
       console.error('Fehler beim Aufrufen der Scrape-Link API:', error)
+      // Callback aufrufen bei API-Fehlern
+      if (onSearchFailed) {
+        onSearchFailed()
+      }
     } finally {
       setLoading(false)
       onSearchEnd?.()
     }
   }
 
+  // Bestimme den Tooltip-Text basierend auf dem Zustand
+  const getTooltipText = () => {
+    if (hasFoundValue) return "Mietwerte gefunden - erneut durchsuchen möglich"
+    if (searchFailed) return "Keine Mietwerte gefunden - erneut versuchen"
+    return "Link durchsuchen"
+  }
+
+  // Bestimme die Hintergrundfarbe basierend auf dem Zustand
+  const getBackgroundColor = () => {
+    if (hasFoundValue) return '#22c55e' // Grün für gefundene Werte
+    if (searchFailed) return '#dc2626' // Rot für fehlgeschlagene Suchen
+    return 'secondary.main' // Normal lila
+  }
+
+  // Bestimme die Shadow-Farbe basierend auf dem Zustand
+  const getShadowColor = () => {
+    if (hasFoundValue) return 'rgba(34, 197, 94, 0.3)'
+    if (searchFailed) return 'rgba(220, 38, 38, 0.3)'
+    return 'rgba(124, 58, 237, 0.3)'
+  }
+
   return (
-    <Tooltip title="Link durchsuchen" arrow>
+    <Tooltip title={getTooltipText()} arrow>
       <IconButton
         onClick={handleSearchClick}
         disabled={loading}
@@ -91,9 +126,9 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
           position: 'absolute',
           top: 16,
           right: 60, // Positioniert links neben dem Calculator-Button (verringerter Abstand)
-          backgroundColor: 'secondary.main',
+          backgroundColor: getBackgroundColor(),
           color: 'white',
-          boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+          boxShadow: `0 2px 8px ${getShadowColor()}`,
           '&:hover': {
             backgroundColor: 'secondary.dark',
             transform: 'scale(1.15)',
@@ -102,9 +137,11 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
           '&:disabled': {
             backgroundColor: 'secondary.light',
             color: 'white',
+            opacity: 0.6,
           },
           transition: 'all 0.3s ease-in-out',
           border: '2px solid white',
+          cursor: 'pointer',
           ...sx
         }}
         size="medium"
