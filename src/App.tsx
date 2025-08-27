@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material'
 import './App.css'
 import CalculatorIcon from './CalculatorIcon'
+import CashflowChip from './CashflowChip'
 
 // Types
 interface Listing {
@@ -148,6 +149,12 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchPerformed, setSearchPerformed] = useState(false)
+
+  // Helper function to get city from zipCode
+  const getCityFromZipCode = (zipCode: string) => {
+    const option = zipCodeOptions.find(option => option.value === zipCode)
+    return option ? option.city : 'Dresden' // Default to Dresden
+  }
   const [sortBy, setSortBy] = useState('')
 
   // Storage keys for localStorage
@@ -894,18 +901,28 @@ function App() {
                                 </Typography>
                               </Box>
 
-                              {/* Price per m² calculation */}
-                              {listing.qm && listing.price && (
-                                <Chip
-                                  label={`${Math.round(
-                                    parseInt(listing.price.replace(/[€.,\s]/g, '')) / 
-                                    parseFloat(listing.qm.replace(',', '.'))
-                                  ).toLocaleString('de-DE')} €/m²`}
-                                  size="small"
-                                  color="secondary"
-                                  variant="outlined"
+                              {/* Chips with reduced spacing */}
+                              <Stack spacing={0.5}>
+                                {/* Price per m² calculation */}
+                                {listing.qm && listing.price && (
+                                  <Chip
+                                    label={`${Math.round(
+                                      parseInt(listing.price.replace(/[€.,\s]/g, '')) / 
+                                      parseFloat(listing.qm.replace(',', '.'))
+                                    ).toLocaleString('de-DE')} €/m²`}
+                                    size="small"
+                                    color="secondary"
+                                    variant="outlined"
+                                  />
+                                )}
+
+                                {/* Cashflow display */}
+                                <CashflowChip 
+                                  price={listing.price}
+                                  qm={listing.qm}
+                                  city={getCityFromZipCode(zipCode)}
                                 />
-                              )}
+                              </Stack>
                             </Stack>
                           </CardContent>
                         </Card>
