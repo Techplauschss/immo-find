@@ -6,10 +6,11 @@ import { useNavigate } from 'react-router-dom'
 interface CalculatorIconProps {
   price: string
   qm: string
+  city?: string  // Stadt für automatische Vorauswahl im Rechner
   sx?: any
 }
 
-const CalculatorIcon: React.FC<CalculatorIconProps> = ({ price, qm, sx }) => {
+const CalculatorIcon: React.FC<CalculatorIconProps> = ({ price, qm, city, sx }) => {
   const navigate = useNavigate()
 
   const handleCalculatorClick = (event: React.MouseEvent) => {
@@ -20,8 +21,14 @@ const CalculatorIcon: React.FC<CalculatorIconProps> = ({ price, qm, sx }) => {
     const priceValue = price.replace(/[€.,\s]/g, '')
     const qmValue = qm.replace(',', '.')
     
+    // Baue URL-Parameter auf, inklusive Stadt falls verfügbar
+    let url = `/rechner?price=${priceValue}&qm=${qmValue}`
+    if (city) {
+      url += `&city=${encodeURIComponent(city)}`
+    }
+    
     // Navigiere zum Rechner mit URL-Parametern
-    navigate(`/rechner?price=${priceValue}&qm=${qmValue}`)
+    navigate(url)
     
     // Scrolle nach kurzer Verzögerung nach oben
     setTimeout(() => {

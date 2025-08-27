@@ -27,7 +27,7 @@ const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowVa
       const flaeche = parseFloat(qm.replace(',', '.'))
       
       // Mietpreis pro m² pro Monat basierend auf Stadt
-      const mietpreisProQm = city === 'Dresden' ? 9.5 : 9.5 // Erstmal nur Dresden implementiert
+      const mietpreisProQm = city === 'Dresden' ? 9.5 : 9.8 // Dresden: 9,5€/m², Leipzig: 9,8€/m²
       
       // 1. Mieteinnahmen pro Monat
       const mieteinnahmen = mietpreisProQm * flaeche
@@ -112,7 +112,7 @@ export const getCashflowValue = (price: string, qm: string, city: string): numbe
     const flaeche = parseFloat(qm.replace(',', '.'))
     
     // Mietpreis pro m² pro Monat basierend auf Stadt
-    const mietpreisProQm = city === 'Dresden' ? 9.5 : 9.5 // Erstmal nur Dresden implementiert
+    const mietpreisProQm = city === 'Dresden' ? 9.5 : 9.8 // Dresden: 9,5€/m², Leipzig: 9,8€/m²
     
     // 1. Mieteinnahmen pro Monat
     const mieteinnahmen = mietpreisProQm * flaeche

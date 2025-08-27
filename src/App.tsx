@@ -989,6 +989,7 @@ function App() {
                         <CalculatorIcon 
                           price={listing.price}
                           qm={listing.qm}
+                          city={getCityFromZipCode(zipCode)}
                         />
                           <CardContent sx={{ p: 3 }}>
                             <Box sx={{ mb: 2 }}>

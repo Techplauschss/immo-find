@@ -136,6 +136,12 @@ function Rechner() {
     const urlParams = new URLSearchParams(window.location.search)
     const priceParam = urlParams.get('price')
     const qmParam = urlParams.get('qm')
+    const cityParam = urlParams.get('city')
+    
+    // Stadt-Parameter verarbeiten und entsprechend setzen
+    if (cityParam && (cityParam === 'Dresden' || cityParam === 'Leipzig')) {
+      setSelectedCity(cityParam)
+    }
     
     if (priceParam) {
       // Formatiere den Preis in deutsches Format (ohne Euro-Symbol für Input-Felder)
