@@ -492,8 +492,15 @@ function App() {
       
       // Filter listings
       const filteredListings = data.listings.filter(listing => {
+        // Skip listings with missing price or qm
+        if (!listing.price || !listing.qm) return false
+        
         const price = parseInt(listing.price.replace(/[€.,\s]/g, ''))
         const qm = parseFloat(listing.qm.replace(',', '.'))
+        
+        // Skip if price or qm couldn't be parsed
+        if (isNaN(price) || isNaN(qm) || qm === 0) return false
+        
         const pricePerSqm = price / qm
         
         // Basic filter
