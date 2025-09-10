@@ -222,8 +222,6 @@ function Rechner() {
   useEffect(() => {
 
     // Prüfen ob alle notwendigen Eingaben vorhanden sind
-    const qm = parseFloat(squareMeters.replace(',', '.')) || 0
-    const hasRentPrice = (autoRentPrice && autoRentPrice.trim() !== '') || (manualRentPrice && manualRentPrice.trim() !== '')
     const financing = parseFormattedNumber(financingAmount)
     const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) || 0
     const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) || 0

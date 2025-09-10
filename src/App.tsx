@@ -424,13 +424,14 @@ function App() {
 
     try {
       // Build URL with optional parameters
-      let url = '/api/listings?'
+  // Basis-Endpunkt abhängig von Stadt (ohne führenden /api, das kümmert buildApiUrl)
+  let endpoint = 'listings'
       
       // Use specific endpoints for certain cities
       if (zipCode === '01069') {
-        url = '/api/dresden-listings?'
+        endpoint = 'dresden-listings'
       } else if (zipCode === '04109') {
-        url = '/api/leipzig-listings?'
+        endpoint = 'leipzig-listings'
       }
       
       const params = []
@@ -473,9 +474,9 @@ function App() {
         params.push(`max_price_per_sqm=${maxPricePerSqmValue}`)
       }
       
-      url += params.join('&')
-      
-      const response = await fetch(url)
+  const { buildApiUrl } = await import('./utils/api')
+  const url = buildApiUrl(endpoint, params.join('&'))
+  const response = await fetch(url)
       
       if (!response.ok) {
         throw new Error('Fehler beim Laden der Daten')

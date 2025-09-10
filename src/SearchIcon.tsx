@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { IconButton, Tooltip, CircularProgress } from '@mui/material'
 import { Search } from '@mui/icons-material'
 import { useCitySettings } from './contexts/CitySettingsContext'
+import { buildApiUrl } from './utils/api'
 
 interface SearchIconProps {
   link: string
@@ -30,8 +31,8 @@ const SearchIcon: React.FC<SearchIconProps> = ({ link, qm, city, sx, onSearchSta
     onSearchStart?.()
     
     try {
-      // API-Aufruf an den scrape-link Endpoint
-      const response = await fetch(`/api/scrape-link?url=${encodeURIComponent(link)}`, {
+  // API-Aufruf an den scrape-link Endpoint (Basis dynamisch über env)
+  const response = await fetch(buildApiUrl('scrape-link', `url=${encodeURIComponent(link)}`), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
