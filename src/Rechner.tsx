@@ -131,8 +131,8 @@ function Rechner() {
   const [financingAmount, setFinancingAmount] = useState('')
   
   // Berechnete Werte für die Annuitätsübersicht
-  const [monthlyInterest, setMonthlyInterest] = useState(0)
-  const [monthlyPrincipal, setMonthlyPrincipal] = useState(0)
+  const [, setMonthlyInterest] = useState(0)
+  const [, setMonthlyPrincipal] = useState(0)
   const [monthlyAnnuity, setMonthlyAnnuity] = useState(0)
   const [showAnnuityOverview, setShowAnnuityOverview] = useState(false)
   const [lastEdited, setLastEdited] = useState<'repayment' | 'annuity' | 'runtime'>('repayment')
@@ -1615,20 +1615,6 @@ function Rechner() {
                             const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
                             const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
                             const netProceeds = salePrice - Math.round(remainingDebt)
-                            totalReturn = netProceeds + (annualCashflow * runtimeYears)
-                          } else {
-                            totalReturn = salePrice + (annualCashflow * runtimeYears)
-                          }
-
-                          if (totalReturn < 0) return '#ef4444'
-
-                          // CAGR berechnen für Farbbestimmung
-                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
-                            const monthlyInterestRate = interestRateDecimal / 12
-                            const totalMonths = 12 * runtimeYears
-                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
-                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                            const netProceeds = salePrice - Math.round(remainingDebt)
                             const totalCashflows = annualCashflow * runtimeYears
                             const calculatedTotalReturn = totalCashflows + netProceeds
                             const cagr = Math.pow(calculatedTotalReturn / eigenkapital, 1 / runtimeYears) - 1
@@ -1699,20 +1685,6 @@ function Rechner() {
 
                           let totalReturn = 0
                           if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
-                            const monthlyInterestRate = interestRateDecimal / 12
-                            const totalMonths = 12 * runtimeYears
-                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
-                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                            const netProceeds = salePrice - Math.round(remainingDebt)
-                            totalReturn = netProceeds + (annualCashflow * runtimeYears)
-                          } else {
-                            totalReturn = salePrice + (annualCashflow * runtimeYears)
-                          }
-
-                          if (totalReturn < 0) return '#ef4444'
-
-                          // IRR berechnen für Farbbestimmung
-                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
                             const monthlyInterestRate = interestRateDecimal / 12
                             const totalMonths = 12 * runtimeYears
                             const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
