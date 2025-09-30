@@ -149,7 +149,7 @@ function Rechner() {
     const cityParam = urlParams.get('city')
     
     // Stadt-Parameter verarbeiten und entsprechend setzen
-    if (cityParam && (cityParam === 'Dresden' || cityParam === 'Leipzig')) {
+    if (cityParam && (cityParam === 'Dresden' || cityParam === 'Leipzig' || cityParam === 'Senftenberg')) {
       setSelectedCity(cityParam)
     }
     
@@ -738,6 +738,7 @@ function Rechner() {
                           >
                             <MenuItem value="Dresden">Dresden</MenuItem>
                             <MenuItem value="Leipzig">Leipzig</MenuItem>
+                            <MenuItem value="Senftenberg">Senftenberg</MenuItem>
                           </Select>
                         </FormControl>
                       </Box>

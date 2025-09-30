@@ -114,6 +114,7 @@ function SettingsPanel() {
   
   const [dresdenRent, setDresdenRent] = useState(settings.Dresden.rentPerSqm.toString().replace('.', ','))
   const [leipzigRent, setLeipzigRent] = useState(settings.Leipzig.rentPerSqm.toString().replace('.', ','))
+  const [senftenbergRent, setSenftenbergRent] = useState(settings.Senftenberg.rentPerSqm.toString().replace('.', ','))
   const [interestRate, setInterestRate] = useState(settings.loanDefaults.interestRate.toString().replace('.', ','))
   const [repaymentRate, setRepaymentRate] = useState(settings.loanDefaults.repaymentRate.toString().replace('.', ','))
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
@@ -136,6 +137,10 @@ function SettingsPanel() {
     setLeipzigRent(formatNumber(value))
   }
 
+  const handleSenftenbergChange = (value: string) => {
+    setSenftenbergRent(formatNumber(value))
+  }
+
   const handleInterestRateChange = (value: string) => {
     setInterestRate(formatNumber(value))
   }
@@ -147,12 +152,14 @@ function SettingsPanel() {
   const handleSave = () => {
     const dresdenValue = parseGermanNumber(dresdenRent)
     const leipzigValue = parseGermanNumber(leipzigRent)
+    const senftenbergValue = parseGermanNumber(senftenbergRent)
     const interestRateValue = parseGermanNumber(interestRate)
     const repaymentRateValue = parseGermanNumber(repaymentRate)
 
-    if (dresdenValue > 0 && leipzigValue > 0 && interestRateValue > 0 && repaymentRateValue > 0) {
+    if (dresdenValue > 0 && leipzigValue > 0 && senftenbergValue > 0 && interestRateValue > 0 && repaymentRateValue > 0) {
       updateCitySetting('Dresden', dresdenValue)
       updateCitySetting('Leipzig', leipzigValue)
+      updateCitySetting('Senftenberg', senftenbergValue)
       updateLoanDefault('interestRate', interestRateValue)
       updateLoanDefault('repaymentRate', repaymentRateValue)
       setShowSuccessMessage(true)
@@ -167,10 +174,12 @@ function SettingsPanel() {
   const handleReset = () => {
     setDresdenRent('9,5')
     setLeipzigRent('9,8')
+    setSenftenbergRent('6,5')
     setInterestRate('2,0')
     setRepaymentRate('2,0')
     updateCitySetting('Dresden', 9.5)
     updateCitySetting('Leipzig', 9.8)
+    updateCitySetting('Senftenberg', 6.5)
     updateLoanDefault('interestRate', 2.0)
     updateLoanDefault('repaymentRate', 2.0)
     // Keine automatische Weiterleitung beim Zurücksetzen
@@ -274,6 +283,26 @@ function SettingsPanel() {
                               size="small"
                               value={leipzigRent}
                               onChange={(e) => handleLeipzigChange(e.target.value)}
+                              InputProps={{
+                                startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                                endAdornment: <InputAdornment position="end">/m²</InputAdornment>,
+                              }}
+                              sx={{ width: 150 }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell sx={{ fontSize: '1rem', fontWeight: 500 }}>
+                            Senftenberg
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '1rem', color: 'text.secondary' }}>
+                            {settings.Senftenberg.rentPerSqm.toString().replace('.', ',')} €/m²
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={senftenbergRent}
+                              onChange={(e) => handleSenftenbergChange(e.target.value)}
                               InputProps={{
                                 startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
                                 endAdornment: <InputAdornment position="end">/m²</InputAdornment>,

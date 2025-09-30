@@ -51,6 +51,7 @@ interface ApiResponse {
 const zipCodeOptions = [
   { value: '01069', label: 'Dresden', city: 'Dresden' },
   { value: '04109', label: 'Leipzig', city: 'Leipzig' },
+  { value: '01968', label: 'Senftenberg', city: 'Senftenberg' },
 ]
 
 // Material-UI Theme
@@ -432,6 +433,8 @@ function App() {
         endpoint = 'dresden-listings'
       } else if (zipCode === '04109') {
         endpoint = 'leipzig-listings'
+      } else if (zipCode === '01968') {
+        endpoint = 'senftenberg-listings'
       }
       
       const params = []

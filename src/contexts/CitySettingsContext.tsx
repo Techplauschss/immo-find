@@ -8,6 +8,9 @@ export interface CitySettings {
   Leipzig: {
     rentPerSqm: number
   }
+  Senftenberg: {
+    rentPerSqm: number
+  }
   loanDefaults: {
     interestRate: number // Zinssatz in Prozent
     repaymentRate: number // Tilgungssatz in Prozent
@@ -16,7 +19,7 @@ export interface CitySettings {
 
 interface CitySettingsContextType {
   settings: CitySettings
-  updateCitySetting: (city: 'Dresden' | 'Leipzig', rentPerSqm: number) => void
+  updateCitySetting: (city: 'Dresden' | 'Leipzig' | 'Senftenberg', rentPerSqm: number) => void
   updateLoanDefault: (key: 'interestRate' | 'repaymentRate', value: number) => void
   getRentPerSqm: (city: string) => number
 }
@@ -27,6 +30,9 @@ const defaultSettings: CitySettings = {
   },
   Leipzig: {
     rentPerSqm: 9.8
+  },
+  Senftenberg: {
+    rentPerSqm: 6.5 // Kleinere Stadt, daher niedrigerer Mietpreis
   },
   loanDefaults: {
     interestRate: 2.0, // 2% Zinssatz als Standard
@@ -59,7 +65,7 @@ export const CitySettingsProvider: React.FC<{ children: ReactNode }> = ({ childr
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   }, [settings])
 
-  const updateCitySetting = (city: 'Dresden' | 'Leipzig', rentPerSqm: number) => {
+  const updateCitySetting = (city: 'Dresden' | 'Leipzig' | 'Senftenberg', rentPerSqm: number) => {
     setSettings(prev => ({
       ...prev,
       [city]: {
@@ -82,6 +88,7 @@ export const CitySettingsProvider: React.FC<{ children: ReactNode }> = ({ childr
   const getRentPerSqm = (city: string): number => {
     if (city === 'Dresden') return settings.Dresden.rentPerSqm
     if (city === 'Leipzig') return settings.Leipzig.rentPerSqm
+    if (city === 'Senftenberg') return settings.Senftenberg.rentPerSqm
     return settings.Dresden.rentPerSqm // Fallback
   }
 
