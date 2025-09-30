@@ -314,10 +314,8 @@ function Rechner() {
   useEffect(() => {
     const financing = parseFormattedNumber(financingAmount)
     const interestRateDecimal = parseFormattedNumber(interestRate) / 100
-    const repaymentAmount = parseFormattedNumber(repaymentRateInput) // Euro-Betrag statt Prozent
     const repaymentRateDecimal = parseFormattedNumber(repaymentRateInput) / 100 // Für Annuitätendarlehen
     const annuityValue = parseFormattedNumber(annuityInput)
-    const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
 
     if (financing > 100 && interestRateDecimal > 0) {
       let monthlyInterestCalc = 0
@@ -410,61 +408,7 @@ function Rechner() {
     return parseFloat(normalized) || 0
   }
 
-  // Berechnung der Tilgungsdaten für das Diagramm
-  const calculateAmortizationData = () => {
-    const financing = parseFormattedNumber(financingAmount)
-    const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
-    const repaymentAmount = parseFormattedNumber(repaymentRateInput) // Euro-Betrag für Tilgungsdarlehen
-    const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) / 100 // Prozent für Annuitätendarlehen
-    const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
-    
-    if (financing <= 0 || interestRateDecimal <= 0) {
-      return []
-    }
 
-    // Prüfe je nach Darlehensart
-    if (loanType === 'Tilgung' && parseFormattedNumber(repaymentRateInput) <= 0) {
-      return []
-    } else if (loanType !== 'Tilgung' && repaymentRateDecimal <= 0) {
-      return []
-    }
-
-    const monthlyInterestRate = interestRateDecimal / 12
-    let remainingDebt = financing
-    const data = []
-
-    // Berechne für die ersten 12 Jahre (144 Monate)
-    for (let month = 1; month <= 144 && remainingDebt > 0; month++) {
-      const monthlyInterestAmount = remainingDebt * monthlyInterestRate
-      let monthlyPrincipalAmount
-      
-      if (loanType === 'Tilgung') {
-        // Bei Tilgungsdarlehen: Konstante monatliche Tilgung
-        monthlyPrincipalAmount = Math.min(
-          parseFormattedNumber(repaymentRateInput),
-          remainingDebt
-        )
-      } else {
-        // Bei Annuitätendarlehen: Tilgung basierend auf Prozentsatz
-        monthlyPrincipalAmount = Math.min(
-          (financing * repaymentRateDecimal) / 12,
-          remainingDebt
-        )
-      }
-      
-      remainingDebt = Math.max(0, remainingDebt - monthlyPrincipalAmount)
-      
-      data.push({
-        month: month,
-        year: Math.ceil(month / 12),
-        zinsen: Math.round(monthlyInterestAmount),
-        tilgung: Math.round(monthlyPrincipalAmount),
-        restschuld: Math.round(remainingDebt),
-      })
-    }
-
-    return data
-  }
 
   const formatNumber = (num: string) => {
     // Entferne alle ungültigen Zeichen außer Ziffern, Kommata und Punkte
@@ -1608,7 +1552,6 @@ function Rechner() {
                           const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
                           const annualCashflow = monthlyCashflow * 12
 
-                          let totalReturn = 0
                           if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
                             const monthlyInterestRate = interestRateDecimal / 12
                             const totalMonths = 12 * runtimeYears
@@ -1683,7 +1626,6 @@ function Rechner() {
                           const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
                           const annualCashflow = monthlyCashflow * 12
 
-                          let totalReturn = 0
                           if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
                             const monthlyInterestRate = interestRateDecimal / 12
                             const totalMonths = 12 * runtimeYears
