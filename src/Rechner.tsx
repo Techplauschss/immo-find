@@ -110,9 +110,9 @@ const theme = createTheme({
 
 function Rechner() {
   const navigate = useNavigate()
-  const { getRentPerSqm } = useCitySettings()
+  const { getRentPerSqm, settings } = useCitySettings()
   
-  // Eingabefelder
+  // Eingabefelder - Standard-Werte aus Einstellungen laden
   const [purchasePrice, setPurchasePrice] = useState('')
   const [squareMeters, setSquareMeters] = useState('')
   const [nonApportionable, setNonApportionable] = useState('')
@@ -122,8 +122,8 @@ function Rechner() {
   const [manualRentPrice, setManualRentPrice] = useState('')
   const [selectedCity, setSelectedCity] = useState('Dresden')
   const [loanType, setLoanType] = useState('Annuitätendarlehen')
-  const [interestRate, setInterestRate] = useState('2,0')
-  const [repaymentRateInput, setRepaymentRateInput] = useState('2,0')
+  const [interestRate, setInterestRate] = useState(settings.loanDefaults.interestRate.toString().replace('.', ','))
+  const [repaymentRateInput, setRepaymentRateInput] = useState(settings.loanDefaults.repaymentRate.toString().replace('.', ','))
   const [annuityInput, setAnnuityInput] = useState('')
   const [runtime, setRuntime] = useState('20')
   
@@ -181,6 +181,12 @@ function Rechner() {
     // Scrolle immer nach oben, wenn die Komponente geladen wird
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
+
+  // Aktualisiere die Standardwerte wenn sich die Einstellungen ändern
+  useEffect(() => {
+    setInterestRate(settings.loanDefaults.interestRate.toString().replace('.', ','))
+    setRepaymentRateInput(settings.loanDefaults.repaymentRate.toString().replace('.', ','))
+  }, [settings.loanDefaults.interestRate, settings.loanDefaults.repaymentRate])
 
   // Automatische Berechnung des Auto-Mietpreises basierend auf Stadt und QM
   useEffect(() => {

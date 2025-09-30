@@ -1,7 +1,7 @@
-# Stadt-Einstellungen Panel
+# Stadt-Einstellungen & Darlehens-Standards Panel
 
-## Übersicht
-Das neue Settings-Panel ermöglicht es, die Mietpreise pro Quadratmeter für Dresden und Leipzig zentral zu verwalten. Diese Einstellungen werden automatisch in allen Cashflow-Berechnungen der Anwendung berücksichtigt.
+## Übersicht  
+Das Settings-Panel ermöglicht es, sowohl die Mietpreise pro Quadratmeter für Dresden und Leipzig als auch die Standardwerte für Annuitätendarlehen zentral zu verwalten. Diese Einstellungen werden automatisch in allen Cashflow-Berechnungen der Anwendung berücksichtigt.
 
 ## Funktionen
 
@@ -9,6 +9,11 @@ Das neue Settings-Panel ermöglicht es, die Mietpreise pro Quadratmeter für Dre
 - **Dresden**: Standard 9,5 €/m² (anpassbar)
 - **Leipzig**: Standard 9,8 €/m² (anpassbar)
 - Dezimalwerte mit Komma (z.B. 9,5)
+
+### 💰 Standard-Werte für Annuitätendarlehen
+- **Zinssatz**: Standard 2,0% (anpassbar)
+- **Tilgungssatz**: Standard 2,0% (anpassbar)
+- Prozentsätze mit Komma (z.B. 2,5)
 
 ### 💾 Persistente Speicherung
 - Einstellungen werden lokal im Browser gespeichert
@@ -18,7 +23,8 @@ Das neue Settings-Panel ermöglicht es, die Mietpreise pro Quadratmeter für Dre
 ### 🔄 Automatische Aktualisierung
 - Sofortige Anwendung in allen Berechnungen
 - Cashflow-Chips aktualisieren sich automatisch
-- Rechner-Modul verwendet aktuelle Werte
+- Rechner-Modul verwendet aktuelle Stadt- und Darlehen-Standardwerte
+- Neue Berechnungen starten mit den gespeicherten Standardwerten
 
 ## Technische Details
 
@@ -34,7 +40,8 @@ Das neue Settings-Panel ermöglicht es, die Mietpreise pro Quadratmeter für Dre
 
 ### Integration
 - `CashflowChip.tsx`: Verwendet Context-basierte Preise
-- `Rechner.tsx`: Auto-Mietpreis basiert auf Context
+- `Rechner.tsx`: Auto-Mietpreis und Standard-Darlehenswerte basieren auf Context
+- Automatische Vorausfüllung von Zinssatz und Tilgungssatz bei neuen Berechnungen
 - Rückwärtskompatibilität für bestehende Funktionen
 
 ## Navigation
@@ -44,10 +51,16 @@ Das neue Settings-Panel ermöglicht es, die Mietpreise pro Quadratmeter für Dre
 
 ## Bedienung
 1. Auf "Einstellungen" klicken
-2. Mietpreise anpassen (Komma als Dezimaltrennzeichen)
+2. **Mietpreise** und **Darlehens-Standards** anpassen (Komma als Dezimaltrennzeichen)
 3. "Speichern" klicken
 4. Erfolgsbestätigung abwarten
-5. Sofortige Anwendung in allen Berechnungen
+5. Sofortige Anwendung in allen neuen Berechnungen
+
+## Standard-Werte
+- **Zinssatz**: 2,0% (typisch für aktuelle Marktsituation)
+- **Tilgungssatz**: 2,0% (Standard für Annuitätendarlehen)
+- Diese Werte werden automatisch beim Öffnen des Rechners gesetzt
+- Können jederzeit manuell überschrieben werden
 
 ## Zusatzfunktionen
 - **Zurücksetzen**: Wiederherstellen der Standardwerte

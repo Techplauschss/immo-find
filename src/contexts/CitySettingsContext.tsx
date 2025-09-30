@@ -8,11 +8,16 @@ export interface CitySettings {
   Leipzig: {
     rentPerSqm: number
   }
+  loanDefaults: {
+    interestRate: number // Zinssatz in Prozent
+    repaymentRate: number // Tilgungssatz in Prozent
+  }
 }
 
 interface CitySettingsContextType {
   settings: CitySettings
   updateCitySetting: (city: 'Dresden' | 'Leipzig', rentPerSqm: number) => void
+  updateLoanDefault: (key: 'interestRate' | 'repaymentRate', value: number) => void
   getRentPerSqm: (city: string) => number
 }
 
@@ -22,6 +27,10 @@ const defaultSettings: CitySettings = {
   },
   Leipzig: {
     rentPerSqm: 9.8
+  },
+  loanDefaults: {
+    interestRate: 2.0, // 2% Zinssatz als Standard
+    repaymentRate: 2.0 // 2% Tilgungssatz als Standard
   }
 }
 
@@ -60,6 +69,16 @@ export const CitySettingsProvider: React.FC<{ children: ReactNode }> = ({ childr
     }))
   }
 
+  const updateLoanDefault = (key: 'interestRate' | 'repaymentRate', value: number) => {
+    setSettings(prev => ({
+      ...prev,
+      loanDefaults: {
+        ...prev.loanDefaults,
+        [key]: value
+      }
+    }))
+  }
+
   const getRentPerSqm = (city: string): number => {
     if (city === 'Dresden') return settings.Dresden.rentPerSqm
     if (city === 'Leipzig') return settings.Leipzig.rentPerSqm
@@ -67,7 +86,7 @@ export const CitySettingsProvider: React.FC<{ children: ReactNode }> = ({ childr
   }
 
   return (
-    <CitySettingsContext.Provider value={{ settings, updateCitySetting, getRentPerSqm }}>
+    <CitySettingsContext.Provider value={{ settings, updateCitySetting, updateLoanDefault, getRentPerSqm }}>
       {children}
     </CitySettingsContext.Provider>
   )
