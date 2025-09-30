@@ -134,25 +134,51 @@ export const useCashflowCalculation = () => {
 }
 
 // Legacy function für Backward-Kompatibilität - wird in einer separaten Komponente ersetzt
+// Da getCashflowValue eine statische Funktion ist, kann sie nicht direkt auf den
+// useCitySettings-Hook zugreifen. Stattdessen lesen wir die Einstellungen aus dem
+// localStorage, wo sie von SettingsPanel.tsx gespeichert werden.
 export const getCashflowValue = (price: string, qm: string, city: string): number => {
-  // Diese Funktion wird deprecated und sollte durch useCashflowCalculation ersetzt werden
-  const mietpreisProQm = city === 'Dresden' ? 9.5 : 9.8 // Fallback-Werte
-  try {
-    const kaufpreis = parseInt(price.replace(/[€.,\s]/g, ''))
-    const flaeche = parseFloat(qm.replace(',', '.'))
-    const mieteinnahmen = mietpreisProQm * flaeche
-    const eigenkapital = 10000
-    const darlehen = kaufpreis - eigenkapital
-    const zinssatz = 0.02
-    const tilgungssatz = 0.02
-    const gesamtrate = zinssatz + tilgungssatz
-    const annuitaetProMonat = (darlehen * gesamtrate) / 12
-    const nichtUmlagefahigeKostenProMonat = (kaufpreis * 0.015) / 12
-    const cashflow = mieteinnahmen - annuitaetProMonat - nichtUmlagefahigeKostenProMonat
-    return Math.round(cashflow)
-  } catch (error) {
-    return 100
+  // Lade die Einstellungen aus dem localStorage
+  const savedSettings = localStorage.getItem('citySettings');
+  const settings = savedSettings ? JSON.parse(savedSettings) : {
+    loanDefaults: {
+      interestRate: 3.5,
+      repaymentRate: 2,
+      downPayment: 10000,
+    },
+    rentPerSqm: {
+      Dresden: 10,
+      Leipzig: 11,
+      Senftenberg: 8,
+    },
+    nonApportionableCostsPerSqm: 25,
+  };
+
+  const rentPerSqm = settings.rentPerSqm[city] || 10;
+  const interestRate = settings.loanDefaults.interestRate;
+  const repaymentRate = settings.loanDefaults.repaymentRate;
+  const downPayment = settings.loanDefaults.downPayment;
+  const nonApportionableCostsPerSqm = settings.nonApportionableCostsPerSqm;
+
+  const purchasePrice = parseInt(price.replace(/[€.,\s]/g, ''));
+  const squareMeters = parseFloat(qm.replace(',', '.'));
+
+  if (isNaN(purchasePrice) || isNaN(squareMeters) || squareMeters === 0) {
+    return -999999; // Ein sehr niedriger Wert für ungültige Daten
   }
-}
+
+  // Einnahmen
+  const rentIncome = squareMeters * rentPerSqm;
+
+  // Kosten
+  const loanAmount = Math.max(0, purchasePrice - downPayment);
+  const monthlyInterest = (loanAmount * (interestRate / 100)) / 12;
+  const monthlyRepayment = (loanAmount * (repaymentRate / 100)) / 12;
+  const monthlyNonApportionableCosts = (squareMeters * nonApportionableCostsPerSqm) / 12;
+
+  const monthlyCosts = monthlyInterest + monthlyRepayment + monthlyNonApportionableCosts;
+
+  return rentIncome - monthlyCosts;
+};
 
 export default CashflowChip
