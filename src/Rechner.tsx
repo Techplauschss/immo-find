@@ -533,19 +533,58 @@ function Rechner() {
         sx={{
           minHeight: '100vh',
           background: (() => {
-            // Cashflow berechnen für Hintergrundfarbe
-            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
-              ? parseFormattedNumber(manualRentPrice)
-              : parseFormattedNumber(autoRentPrice)
-            const nonApportionableValue = parseFormattedNumber(nonApportionable)
-            const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-            
             if (showAnnuityOverview) {
-              // Grüner Gradient bei positivem Cashflow
-              if (cashflow >= 0) {
+              // Cashflow gesamt berechnen für Hintergrundfarbe
+              const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                ? parseFormattedNumber(manualRentPrice)
+                : parseFormattedNumber(autoRentPrice)
+              const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+              const totalMonths = runtimeYears * 12
+              const nonApportionableValue = parseFormattedNumber(nonApportionable)
+              
+              // Einnahmen gesamt
+              const totalRentIncome = rentPrice * 12 * runtimeYears
+              
+              // Annuitäten gesamt berechnen
+              let totalAnnuitiesWithCosts = 0
+              const totalNonApportionable = nonApportionableValue * totalMonths
+              
+              if (loanType === 'Tilgung') {
+                // Bei Tilgungsdarlehen
+                const financing = parseFormattedNumber(financingAmount)
+                const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+                const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                
+                if (financing > 0 && interestRateDecimal > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                  let remainingDebt = financing
+                  const monthlyInterestRate = interestRateDecimal / 12
+                  let totalAnnuities = 0
+                  
+                  for (let month = 1; month <= totalMonths && remainingDebt > 0; month++) {
+                    const monthlyInterest = remainingDebt * monthlyInterestRate
+                    const monthlyAnnuity = monthlyInterest + monthlyRepayment
+                    totalAnnuities += monthlyAnnuity
+                    remainingDebt -= monthlyRepayment
+                  }
+                  
+                  totalAnnuitiesWithCosts = totalAnnuities + totalNonApportionable
+                } else {
+                  totalAnnuitiesWithCosts = totalNonApportionable
+                }
+              } else {
+                // Bei Annuitätendarlehen
+                const totalAnnuities = monthlyAnnuity * totalMonths
+                totalAnnuitiesWithCosts = totalAnnuities + totalNonApportionable
+              }
+              
+              // Cashflow gesamt = Einnahmen gesamt - Annuitäten gesamt
+              const totalCashflow = totalRentIncome - totalAnnuitiesWithCosts
+              
+              // Grüner Gradient bei positivem Cashflow gesamt
+              if (totalCashflow >= 0) {
                 return 'linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%)'
               }
-              // Rötlicher Gradient bei negativem Cashflow
+              // Rötlicher Gradient bei negativem Cashflow gesamt
               else {
                 return 'linear-gradient(135deg, #f87171 0%, #ef4444 50%, #dc2626 100%)'
               }
@@ -799,7 +838,8 @@ function Rechner() {
                           shrink: true,
                         }}
                         InputProps={{
-                          startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                          startAdornment: loanType === 'Tilgung' ? <InputAdornment position="start"><Euro /></InputAdornment> : null,
+                          endAdornment: loanType !== 'Tilgung' ? <InputAdornment position="end"><Percent /></InputAdornment> : null,
                         }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
@@ -995,7 +1035,11 @@ function Rechner() {
                             Annuität p.M.:
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            - {formatCurrency(monthlyAnnuity)}
+                            - {formatCurrency(
+                              loanType === 'Tilgung'
+                                ? specificMonthInterest + specificMonthPrincipal
+                                : monthlyAnnuity
+                            )}
                           </Typography>
                         </Box>
 
@@ -1021,6 +1065,9 @@ function Rechner() {
                           justifyContent: 'space-between', 
                           alignItems: 'center',
                           backgroundColor: (() => {
+                            if (loanType === 'Tilgung') {
+                              return 'transparent'
+                            }
                             const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
                               ? parseFormattedNumber(manualRentPrice)
                               : parseFormattedNumber(autoRentPrice)
@@ -1040,7 +1087,10 @@ function Rechner() {
                               ? parseFormattedNumber(manualRentPrice)
                               : parseFormattedNumber(autoRentPrice)
                             const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                            const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            const currentAnnuity = loanType === 'Tilgung'
+                              ? specificMonthInterest + specificMonthPrincipal
+                              : monthlyAnnuity
+                            const cashflow = rentPrice - currentAnnuity - nonApportionableValue
                             return cashflow >= 0 ? '#22c55e' : '#ef4444'
                           })() }}>
                             {(() => {
@@ -1048,7 +1098,10 @@ function Rechner() {
                                 ? parseFormattedNumber(manualRentPrice)
                                 : parseFormattedNumber(autoRentPrice)
                               const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                              const cashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                              const currentAnnuity = loanType === 'Tilgung'
+                                ? specificMonthInterest + specificMonthPrincipal
+                                : monthlyAnnuity
+                              const cashflow = rentPrice - currentAnnuity - nonApportionableValue
                               return formatCurrency(cashflow)
                             })()}
                           </Typography>
@@ -1070,43 +1123,107 @@ function Rechner() {
                     </Typography>
 
                     <Stack spacing={0.5}>
-                      {/* Cashflow p.A. */}
+                      {/* Cashflow p.A. - nur bei Annuitätendarlehen anzeigen */}
+                      {loanType !== 'Tilgung' && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Cashflow p.A.:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {(() => {
+                              const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                                ? parseFormattedNumber(manualRentPrice)
+                                : parseFormattedNumber(autoRentPrice)
+                              const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                              const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                              const annualCashflow = monthlyCashflow * 12
+                              return formatCurrency(annualCashflow)
+                            })()}
+                          </Typography>
+                        </Box>
+                      )}
+
+                      {/* Laufzeit - nur bei Annuitätendarlehen anzeigen */}
+                      {loanType !== 'Tilgung' && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Laufzeit (Jahre):
+                          </Typography>
+                          <TextField
+                            size="small"
+                            value={runtime}
+                            onChange={(e) => setRuntime(e.target.value)}
+                            sx={{ 
+                              width: 100,
+                              '& .MuiOutlinedInput-root': {
+                                height: 32,
+                              },
+                              '& .MuiOutlinedInput-input': {
+                                textAlign: 'right',
+                              }
+                            }}
+                          />
+                        </Box>
+                      )}
+
+                      {/* Annuitäten gesamt */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
-                          Cashflow p.A.:
+                          Annuitäten gesamt:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const totalMonths = runtimeYears * 12
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const totalNonApportionable = nonApportionableValue * totalMonths
+                            
+                            if (loanType === 'Tilgung') {
+                              // Bei Tilgungsdarlehen: Summe aller monatlichen Annuitäten + nicht umlagefähige Kosten über die Zinsbindung
+                              const financing = parseFormattedNumber(financingAmount)
+                              const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+                              const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                              
+                              if (financing > 0 && interestRateDecimal > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                let remainingDebt = financing
+                                const monthlyInterestRate = interestRateDecimal / 12
+                                let totalAnnuities = 0
+                                
+                                for (let month = 1; month <= totalMonths && remainingDebt > 0; month++) {
+                                  const monthlyInterest = remainingDebt * monthlyInterestRate
+                                  const monthlyAnnuity = monthlyInterest + monthlyRepayment
+                                  totalAnnuities += monthlyAnnuity
+                                  remainingDebt -= monthlyRepayment
+                                }
+                                
+                                return formatCurrency(totalAnnuities + totalNonApportionable)
+                              }
+                            } else {
+                              // Bei Annuitätendarlehen: Konstante Annuität * Anzahl Monate + nicht umlagefähige Kosten
+                              const totalAnnuities = monthlyAnnuity * totalMonths
+                              return formatCurrency(totalAnnuities + totalNonApportionable)
+                            }
+                            
+                            return formatCurrency(totalNonApportionable)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Einnahmen gesamt */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Einnahmen gesamt:
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 500 }}>
                           {(() => {
                             const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
                               ? parseFormattedNumber(manualRentPrice)
                               : parseFormattedNumber(autoRentPrice)
-                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-                            const annualCashflow = monthlyCashflow * 12
-                            return formatCurrency(annualCashflow)
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const totalRentIncome = rentPrice * 12 * runtimeYears
+                            return formatCurrency(totalRentIncome)
                           })()}
                         </Typography>
-                      </Box>
-
-                      {/* Laufzeit */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Laufzeit (Jahre):
-                        </Typography>
-                        <TextField
-                          size="small"
-                          value={runtime}
-                          onChange={(e) => setRuntime(e.target.value)}
-                          sx={{ 
-                            width: 100,
-                            '& .MuiOutlinedInput-root': {
-                              height: 32,
-                            },
-                            '& .MuiOutlinedInput-input': {
-                              textAlign: 'right',
-                            }
-                          }}
-                        />
                       </Box>
 
                       {/* Cashflow gesamt */}
@@ -1119,11 +1236,47 @@ function Rechner() {
                             const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
                               ? parseFormattedNumber(manualRentPrice)
                               : parseFormattedNumber(autoRentPrice)
-                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-                            const annualCashflow = monthlyCashflow * 12
                             const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
-                            const totalCashflow = annualCashflow * runtimeYears
+                            const totalMonths = runtimeYears * 12
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            
+                            // Einnahmen gesamt (Mieteinnahmen über Zinsbindungszeit)
+                            const totalRentIncome = rentPrice * 12 * runtimeYears
+                            
+                            // Annuitäten gesamt berechnen (gleiche Logik wie im "Annuitäten gesamt" Feld)
+                            let totalAnnuitiesWithCosts = 0
+                            const totalNonApportionable = nonApportionableValue * totalMonths
+                            
+                            if (loanType === 'Tilgung') {
+                              // Bei Tilgungsdarlehen: Summe aller monatlichen Annuitäten + nicht umlagefähige Kosten
+                              const financing = parseFormattedNumber(financingAmount)
+                              const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+                              const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                              
+                              if (financing > 0 && interestRateDecimal > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                let remainingDebt = financing
+                                const monthlyInterestRate = interestRateDecimal / 12
+                                let totalAnnuities = 0
+                                
+                                for (let month = 1; month <= totalMonths && remainingDebt > 0; month++) {
+                                  const monthlyInterest = remainingDebt * monthlyInterestRate
+                                  const monthlyAnnuity = monthlyInterest + monthlyRepayment
+                                  totalAnnuities += monthlyAnnuity
+                                  remainingDebt -= monthlyRepayment
+                                }
+                                
+                                totalAnnuitiesWithCosts = totalAnnuities + totalNonApportionable
+                              } else {
+                                totalAnnuitiesWithCosts = totalNonApportionable
+                              }
+                            } else {
+                              // Bei Annuitätendarlehen: Konstante Annuität * Anzahl Monate + nicht umlagefähige Kosten
+                              const totalAnnuities = monthlyAnnuity * totalMonths
+                              totalAnnuitiesWithCosts = totalAnnuities + totalNonApportionable
+                            }
+                            
+                            // Cashflow gesamt = Einnahmen gesamt - Annuitäten gesamt
+                            const totalCashflow = totalRentIncome - totalAnnuitiesWithCosts
                             return formatCurrency(totalCashflow)
                           })()}
                         </Typography>
@@ -1152,22 +1305,42 @@ function Rechner() {
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 500 }}>
                           {(() => {
-                            const financing = parseFormattedNumber(financingAmount) // C11
-                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100 // E11
-                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0 // G16
-                            const monthlyRate = monthlyAnnuity // I11
+                            if (loanType === 'Tilgung') {
+                              // Bei Tilgungsdarlehen: Verwende das optionale Eingabefeld oder berechne automatisch
+                              if (remainingDebtInput && remainingDebtInput.trim() !== '') {
+                                return formatCurrency(parseFormattedNumber(remainingDebtInput))
+                              } else {
+                                // Automatische Berechnung basierend auf Tilgungsdarlehen
+                                const financing = parseFormattedNumber(financingAmount)
+                                const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                                const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                                const totalMonths = runtimeYears * 12
+                                
+                                if (financing > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                  const totalRepayment = monthlyRepayment * totalMonths
+                                  const remainingDebt = Math.max(0, financing - totalRepayment)
+                                  return formatCurrency(remainingDebt)
+                                }
+                                return formatCurrency(0)
+                              }
+                            } else {
+                              // Bei Annuitätendarlehen: Alte Berechnung beibehalten
+                              const financing = parseFormattedNumber(financingAmount)
+                              const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                              const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                              const monthlyRate = monthlyAnnuity
 
-                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
-                              // Formel: RUNDEN(C11*(1+E11/12)^(12*G16) - I11 * (((1+E11/12)^(12*G16)-1) / (E11/12));0)
-                              const monthlyInterestRate = interestRateDecimal / 12
-                              const totalMonths = 12 * runtimeYears
-                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
-                              
-                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                              
-                              return formatCurrency(Math.round(remainingDebt))
+                              if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                                const monthlyInterestRate = interestRateDecimal / 12
+                                const totalMonths = 12 * runtimeYears
+                                const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                                
+                                const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                                
+                                return formatCurrency(Math.round(remainingDebt))
+                              }
+                              return formatCurrency(0)
                             }
-                            return formatCurrency(0)
                           })()}
                         </Typography>
                       </Box>
@@ -1180,24 +1353,48 @@ function Rechner() {
                         <Typography variant="body1" sx={{ fontWeight: 500 }}>
                           {(() => {
                             const salePrice = parseFormattedNumber(purchasePrice)
-                            const financing = parseFormattedNumber(financingAmount)
-                            const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
-                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
-                            const monthlyRate = monthlyAnnuity
-
-                            if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
-                              // Restschuld berechnen
-                              const monthlyInterestRate = interestRateDecimal / 12
-                              const totalMonths = 12 * runtimeYears
-                              const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
-                              const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                            
+                            if (loanType === 'Tilgung') {
+                              // Bei Tilgungsdarlehen: Verkaufspreis - Restschuld (aus Eingabe oder berechnet)
+                              let remainingDebt = 0
+                              if (remainingDebtInput && remainingDebtInput.trim() !== '') {
+                                remainingDebt = parseFormattedNumber(remainingDebtInput)
+                              } else {
+                                // Automatische Berechnung der Restschuld
+                                const financing = parseFormattedNumber(financingAmount)
+                                const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                                const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                                const totalMonths = runtimeYears * 12
+                                
+                                if (financing > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                  const totalRepayment = monthlyRepayment * totalMonths
+                                  remainingDebt = Math.max(0, financing - totalRepayment)
+                                }
+                              }
                               
-                              // Nettoerlös = Verkaufspreis - Restschuld
-                              const netProceeds = salePrice - Math.round(remainingDebt)
-                              
+                              const netProceeds = salePrice - remainingDebt
                               return formatCurrency(netProceeds)
+                            } else {
+                              // Bei Annuitätendarlehen: Alte komplexe Berechnung beibehalten
+                              const financing = parseFormattedNumber(financingAmount)
+                              const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                              const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                              const monthlyRate = monthlyAnnuity
+
+                              if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                                // Restschuld berechnen
+                                const monthlyInterestRate = interestRateDecimal / 12
+                                const totalMonths = 12 * runtimeYears
+                                const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                                const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                                
+                                // Nettoerlös = Verkaufspreis - Restschuld
+                                const netProceeds = salePrice - Math.round(remainingDebt)
+                                
+                                return formatCurrency(netProceeds)
+                              }
+                              return formatCurrency(salePrice)
                             }
-                            return formatCurrency(salePrice)
                           })()}
                         </Typography>
                       </Box>
@@ -1209,42 +1406,70 @@ function Rechner() {
                           Gesamtertrag:
                         </Typography>
                         <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
-                          const salePrice = parseFormattedNumber(purchasePrice)
-                          const financing = parseFormattedNumber(financingAmount)
-                          const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
-                          const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
-                          const monthlyRate = monthlyAnnuity
-
-                          // Cashflow p.A. berechnen
-                          const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
-                            ? parseFormattedNumber(manualRentPrice)
-                            : parseFormattedNumber(autoRentPrice)
-                          const nonApportionableValue = parseFormattedNumber(nonApportionable)
-                          const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-                          const annualCashflow = monthlyCashflow * 12
-
-                          let totalReturn = 0
-                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
-                            const monthlyInterestRate = interestRateDecimal / 12
-                            const totalMonths = 12 * runtimeYears
-                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
-                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                            const netProceeds = salePrice - Math.round(remainingDebt)
-                            totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                          if (loanType === 'Tilgung') {
+                            // Bei Tilgungsdarlehen: Nettoerlös + Cashflow gesamt
+                            const salePrice = parseFormattedNumber(purchasePrice)
+                            
+                            // Nettoerlös berechnen (gleiche Logik wie oben)
+                            let remainingDebt = 0
+                            if (remainingDebtInput && remainingDebtInput.trim() !== '') {
+                              remainingDebt = parseFormattedNumber(remainingDebtInput)
+                            } else {
+                              const financing = parseFormattedNumber(financingAmount)
+                              const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                              const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                              const totalMonths = runtimeYears * 12
+                              
+                              if (financing > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                const totalRepayment = monthlyRepayment * totalMonths
+                                remainingDebt = Math.max(0, financing - totalRepayment)
+                              }
+                            }
+                            const netProceeds = salePrice - remainingDebt
+                            
+                            // Cashflow gesamt berechnen (gleiche Logik wie im Cashflow gesamt Feld)
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const totalMonths = runtimeYears * 12
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            
+                            const totalRentIncome = rentPrice * 12 * runtimeYears
+                            const totalNonApportionable = nonApportionableValue * totalMonths
+                            
+                            let totalAnnuitiesWithCosts = totalNonApportionable
+                            const financing = parseFormattedNumber(financingAmount)
+                            const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+                            const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                            
+                            if (financing > 0 && interestRateDecimal > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                              let remainingDebtCalc = financing
+                              const monthlyInterestRate = interestRateDecimal / 12
+                              let totalAnnuities = 0
+                              
+                              for (let month = 1; month <= totalMonths && remainingDebtCalc > 0; month++) {
+                                const monthlyInterest = remainingDebtCalc * monthlyInterestRate
+                                const monthlyAnnuity = monthlyInterest + monthlyRepayment
+                                totalAnnuities += monthlyAnnuity
+                                remainingDebtCalc -= monthlyRepayment
+                              }
+                              
+                              totalAnnuitiesWithCosts = totalAnnuities + totalNonApportionable
+                            }
+                            
+                            const totalCashflow = totalRentIncome - totalAnnuitiesWithCosts
+                            const totalReturn = netProceeds + totalCashflow
+                            
+                            return totalReturn < 0 ? '#ef4444' : '#22c55e'
                           } else {
-                            totalReturn = salePrice + (annualCashflow * runtimeYears)
-                          }
-
-                          return totalReturn < 0 ? '#ef4444' : '#22c55e'
-                        })() }}>
-                          {(() => {
+                            // Bei Annuitätendarlehen: Alte Berechnung
                             const salePrice = parseFormattedNumber(purchasePrice)
                             const financing = parseFormattedNumber(financingAmount)
                             const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
                             const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
                             const monthlyRate = monthlyAnnuity
 
-                            // Cashflow p.A. berechnen
                             const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
                               ? parseFormattedNumber(manualRentPrice)
                               : parseFormattedNumber(autoRentPrice)
@@ -1252,20 +1477,106 @@ function Rechner() {
                             const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
                             const annualCashflow = monthlyCashflow * 12
 
+                            let totalReturn = 0
                             if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
-                              // Restschuld berechnen
                               const monthlyInterestRate = interestRateDecimal / 12
                               const totalMonths = 12 * runtimeYears
                               const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
                               const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
                               const netProceeds = salePrice - Math.round(remainingDebt)
+                              totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                            } else {
+                              totalReturn = salePrice + (annualCashflow * runtimeYears)
+                            }
+
+                            return totalReturn < 0 ? '#ef4444' : '#22c55e'
+                          }
+                        })() }}>
+                          {(() => {
+                            if (loanType === 'Tilgung') {
+                              // Bei Tilgungsdarlehen: Nettoerlös + Cashflow gesamt
+                              const salePrice = parseFormattedNumber(purchasePrice)
                               
-                              // Gesamtertrag = Nettoerlös + (Cashflow p.a. * Laufzeit)
-                              const totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                              // Nettoerlös berechnen (gleiche Logik wie oben)
+                              let remainingDebt = 0
+                              if (remainingDebtInput && remainingDebtInput.trim() !== '') {
+                                remainingDebt = parseFormattedNumber(remainingDebtInput)
+                              } else {
+                                const financing = parseFormattedNumber(financingAmount)
+                                const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                                const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                                const totalMonths = runtimeYears * 12
+                                
+                                if (financing > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                  const totalRepayment = monthlyRepayment * totalMonths
+                                  remainingDebt = Math.max(0, financing - totalRepayment)
+                                }
+                              }
+                              const netProceeds = salePrice - remainingDebt
+                              
+                              // Cashflow gesamt berechnen (gleiche Logik wie im Cashflow gesamt Feld)
+                              const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                                ? parseFormattedNumber(manualRentPrice)
+                                : parseFormattedNumber(autoRentPrice)
+                              const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                              const totalMonths = runtimeYears * 12
+                              const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                              
+                              const totalRentIncome = rentPrice * 12 * runtimeYears
+                              const totalNonApportionable = nonApportionableValue * totalMonths
+                              
+                              let totalAnnuitiesWithCosts = totalNonApportionable
+                              const financing = parseFormattedNumber(financingAmount)
+                              const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+                              const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+                              
+                              if (financing > 0 && interestRateDecimal > 0 && monthlyRepayment > 0 && totalMonths > 0) {
+                                let remainingDebtCalc = financing
+                                const monthlyInterestRate = interestRateDecimal / 12
+                                let totalAnnuities = 0
+                                
+                                for (let month = 1; month <= totalMonths && remainingDebtCalc > 0; month++) {
+                                  const monthlyInterest = remainingDebtCalc * monthlyInterestRate
+                                  const monthlyAnnuity = monthlyInterest + monthlyRepayment
+                                  totalAnnuities += monthlyAnnuity
+                                  remainingDebtCalc -= monthlyRepayment
+                                }
+                                
+                                totalAnnuitiesWithCosts = totalAnnuities + totalNonApportionable
+                              }
+                              
+                              const totalCashflow = totalRentIncome - totalAnnuitiesWithCosts
+                              const totalReturn = netProceeds + totalCashflow
                               
                               return formatCurrency(totalReturn)
+                            } else {
+                              // Bei Annuitätendarlehen: Alte Berechnung
+                              const salePrice = parseFormattedNumber(purchasePrice)
+                              const financing = parseFormattedNumber(financingAmount)
+                              const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                              const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                              const monthlyRate = monthlyAnnuity
+
+                              const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                                ? parseFormattedNumber(manualRentPrice)
+                                : parseFormattedNumber(autoRentPrice)
+                              const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                              const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                              const annualCashflow = monthlyCashflow * 12
+
+                              if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                                const monthlyInterestRate = interestRateDecimal / 12
+                                const totalMonths = 12 * runtimeYears
+                                const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                                const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                                const netProceeds = salePrice - Math.round(remainingDebt)
+                                
+                                const totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                                
+                                return formatCurrency(totalReturn)
+                              }
+                              return formatCurrency(salePrice + (annualCashflow * runtimeYears))
                             }
-                            return formatCurrency(salePrice + (annualCashflow * runtimeYears))
                           })()}
                         </Typography>
                       </Box>
