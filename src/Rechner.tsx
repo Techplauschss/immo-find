@@ -16,6 +16,7 @@ import {
   FormControl,
   Select,
   MenuItem,
+  InputLabel,
 } from '@mui/material'
 import {
   Euro,
@@ -120,8 +121,10 @@ function Rechner() {
   const [autoRentPrice, setAutoRentPrice] = useState('')
   const [manualRentPrice, setManualRentPrice] = useState('')
   const [selectedCity, setSelectedCity] = useState('Dresden')
+  const [loanType, setLoanType] = useState('Annuitätendarlehen')
   const [interestRate, setInterestRate] = useState('2,0')
   const [repaymentRateInput, setRepaymentRateInput] = useState('2,0')
+  const [annuityInput, setAnnuityInput] = useState('')
   const [runtime, setRuntime] = useState('20')
   
   // Berechnete Werte für die dritte Zeile
@@ -132,6 +135,11 @@ function Rechner() {
   const [monthlyPrincipal, setMonthlyPrincipal] = useState(0)
   const [monthlyAnnuity, setMonthlyAnnuity] = useState(0)
   const [showAnnuityOverview, setShowAnnuityOverview] = useState(false)
+  const [lastEdited, setLastEdited] = useState<'repayment' | 'annuity' | 'runtime'>('repayment')
+  const [selectedMonth, setSelectedMonth] = useState('1')
+  const [specificMonthInterest, setSpecificMonthInterest] = useState(0)
+  const [specificMonthPrincipal, setSpecificMonthPrincipal] = useState(0)
+  const [remainingDebtInput, setRemainingDebtInput] = useState('')
 
   // URL-Parameter beim Laden der Komponente auslesen und Felder befüllen
   useEffect(() => {
@@ -218,32 +226,164 @@ function Rechner() {
     }
   }, [purchasePrice, downPayment])
 
+  // Effekt zur automatischen Berechnung der Tilgung oder Laufzeit bei Tilgungsdarlehen
+  useEffect(() => {
+    if (loanType === 'Tilgung') {
+      const financing = parseFormattedNumber(financingAmount)
+      const remainingDebt = parseFormattedNumber(remainingDebtInput)
+      const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+      const monthlyRepayment = parseFormattedNumber(repaymentRateInput)
+
+      if (financing > 0) {
+        const totalRepayment = financing - remainingDebt
+        if (totalRepayment <= 0) {
+          if (lastEdited === 'runtime') setRepaymentRateInput('0,00')
+          if (lastEdited === 'repayment') setRuntime('0,00')
+          return
+        }
+
+        if (lastEdited === 'runtime' && runtimeYears > 0) {
+          const newMonthlyRepayment = totalRepayment / (runtimeYears * 12)
+          setRepaymentRateInput(formatNumber(newMonthlyRepayment.toFixed(2).replace('.', ',')))
+        } else if (lastEdited === 'repayment' && monthlyRepayment > 0) {
+          const totalMonths = totalRepayment / monthlyRepayment
+          const newRuntimeYears = totalMonths / 12
+          setRuntime(newRuntimeYears.toFixed(2).replace('.', ','))
+        }
+      }
+    }
+  }, [financingAmount, remainingDebtInput, runtime, repaymentRateInput, loanType, lastEdited])
+
+  // Effekt zur Synchronisierung von Tilgung und Annuität
+  useEffect(() => {
+    const financing = parseFormattedNumber(financingAmount)
+    const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+    const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+
+    if (financing <= 0 || interestRateDecimal <= 0) return
+
+    if (lastEdited === 'repayment') {
+      if (loanType === 'Tilgung') {
+        // Bei Tilgungsdarlehen: Euro-Betrag wird über Laufzeit verteilt
+        const repaymentAmount = parseFormattedNumber(repaymentRateInput)
+        if (repaymentAmount > 0 && runtimeYears > 0) {
+          const monthlyInterestCalc = (financing * interestRateDecimal) / 12
+          const monthlyPrincipalCalc = repaymentAmount / (runtimeYears * 12)
+          const newAnnuity = monthlyInterestCalc + monthlyPrincipalCalc
+          setAnnuityInput(formatNumber(newAnnuity.toFixed(2).replace('.', ',')))
+        } else {
+          setAnnuityInput('')
+        }
+      } else {
+        // Bei Annuitätendarlehen: Prozentsatz wird verwendet
+        const repaymentRateDecimal = parseFormattedNumber(repaymentRateInput) / 100
+        if (repaymentRateDecimal > 0) {
+          const monthlyInterestCalc = (financing * interestRateDecimal) / 12
+          const monthlyPrincipalCalc = (financing * repaymentRateDecimal) / 12
+          const newAnnuity = monthlyInterestCalc + monthlyPrincipalCalc
+          setAnnuityInput(formatNumber(newAnnuity.toFixed(2).replace('.', ',')))
+        } else {
+          setAnnuityInput('')
+        }
+      }
+    } else if (lastEdited === 'annuity') {
+      const annuityValue = parseFormattedNumber(annuityInput)
+      if (annuityValue > 0) {
+        const monthlyInterestCalc = (financing * interestRateDecimal) / 12
+        const monthlyPrincipalCalc = annuityValue - monthlyInterestCalc
+        if (monthlyPrincipalCalc > 0) {
+          const newRepaymentRate = (monthlyPrincipalCalc * 12 / financing) * 100
+          setRepaymentRateInput(newRepaymentRate.toFixed(2).replace('.', ','))
+        } else {
+          setRepaymentRateInput('0,00')
+        }
+      } else {
+        setRepaymentRateInput('')
+      }
+    }
+  }, [financingAmount, interestRate, repaymentRateInput, annuityInput, lastEdited])
+
+
   // Automatische Berechnung der Annuität
   useEffect(() => {
-
-    // Prüfen ob alle notwendigen Eingaben vorhanden sind
     const financing = parseFormattedNumber(financingAmount)
-    const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) || 0
-    const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) || 0
+    const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+    const repaymentAmount = parseFormattedNumber(repaymentRateInput) // Euro-Betrag statt Prozent
+    const repaymentRateDecimal = parseFormattedNumber(repaymentRateInput) / 100 // Für Annuitätendarlehen
+    const annuityValue = parseFormattedNumber(annuityInput)
+    const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
 
-    if (financing > 100 && interestRateDecimal > 0 && repaymentRateDecimal > 0) {
-      // Zinsen pro Monat = Finanzierungsbetrag * Zinssatz p.A. / 12
-      const monthlyInterestCalc = (financing * interestRateDecimal / 100) / 12
-      
-      // Tilgung pro Monat = Finanzierungsbetrag * Tilgungssatz p.A. / 12
-      const monthlyPrincipalCalc = (financing * repaymentRateDecimal / 100) / 12
-      
-      // Annuität = Zinsen + Tilgung
-      const monthlyAnnuityCalc = monthlyInterestCalc + monthlyPrincipalCalc
+    if (financing > 100 && interestRateDecimal > 0) {
+      let monthlyInterestCalc = 0
+      let monthlyPrincipalCalc = 0
+      let monthlyAnnuityCalc = 0
 
-      setMonthlyInterest(monthlyInterestCalc)
-      setMonthlyPrincipal(monthlyPrincipalCalc)
-      setMonthlyAnnuity(monthlyAnnuityCalc)
-      setShowAnnuityOverview(true)
+      if (loanType === 'Tilgung') {
+        // Bei Tilgungsdarlehen: Die monatliche Tilgung ist konstant
+        const monthlyPrincipalCalc = parseFormattedNumber(repaymentRateInput)
+        if (monthlyPrincipalCalc > 0) {
+          monthlyInterestCalc = (financing * interestRateDecimal) / 12 // Zinsen für ersten Monat
+          monthlyAnnuityCalc = monthlyInterestCalc + monthlyPrincipalCalc
+        }
+      } else {
+        // Bei Annuitätendarlehen: Konstante Annuität
+        monthlyInterestCalc = (financing * interestRateDecimal) / 12
+        if (lastEdited === 'repayment' && repaymentRateDecimal > 0) {
+          monthlyPrincipalCalc = (financing * repaymentRateDecimal) / 12
+          monthlyAnnuityCalc = monthlyInterestCalc + monthlyPrincipalCalc
+        } else if (lastEdited === 'annuity' && annuityValue > 0) {
+          monthlyAnnuityCalc = annuityValue
+          monthlyPrincipalCalc = monthlyAnnuityCalc - monthlyInterestCalc
+        }
+      }
+
+      if (monthlyAnnuityCalc > 0) {
+        setMonthlyInterest(monthlyInterestCalc)
+        setMonthlyPrincipal(monthlyPrincipalCalc)
+        setMonthlyAnnuity(monthlyAnnuityCalc)
+        setShowAnnuityOverview(true)
+      } else {
+        setShowAnnuityOverview(false)
+      }
     } else {
       setShowAnnuityOverview(false)
     }
-  }, [squareMeters, autoRentPrice, manualRentPrice, financingAmount, interestRate, repaymentRateInput])
+  }, [financingAmount, interestRate, repaymentRateInput, annuityInput, lastEdited, loanType])
+
+  // Berechnung der Annuitätsdetails für einen spezifischen Monat
+  useEffect(() => {
+    const financing = parseFormattedNumber(financingAmount)
+    const interestRateDecimal = parseFormattedNumber(interestRate) / 100
+    const month = parseInt(selectedMonth, 10)
+
+    if (financing > 0 && interestRateDecimal > 0 && monthlyAnnuity > 0 && month > 0) {
+      let remainingDebt = financing
+      const monthlyInterestRate = interestRateDecimal / 12
+      let currentInterest = 0
+      let currentPrincipal = 0
+
+      if (loanType === 'Tilgung') {
+        // Bei Tilgungsdarlehen: Konstante Tilgung, variable Zinsen
+        const monthlyPrincipalFixed = parseFormattedNumber(repaymentRateInput)
+        
+        for (let i = 1; i <= month; i++) {
+          currentInterest = remainingDebt * monthlyInterestRate
+          currentPrincipal = monthlyPrincipalFixed
+          remainingDebt -= currentPrincipal
+        }
+      } else {
+        // Bei Annuitätendarlehen: Konstante Annuität, variable Zinsen und Tilgung
+        for (let i = 1; i <= month; i++) {
+          currentInterest = remainingDebt * monthlyInterestRate
+          currentPrincipal = monthlyAnnuity - currentInterest
+          remainingDebt -= currentPrincipal
+        }
+      }
+
+      setSpecificMonthInterest(currentInterest)
+      setSpecificMonthPrincipal(currentPrincipal)
+    }
+  }, [selectedMonth, financingAmount, interestRate, monthlyAnnuity, loanType, repaymentRateInput])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -262,6 +402,62 @@ function Rechner() {
     // Konvertiere deutsche Formatierung (1.000,50) zu englischer (1000.50)
     const normalized = cleaned.replace(/\./g, '').replace(',', '.')
     return parseFloat(normalized) || 0
+  }
+
+  // Berechnung der Tilgungsdaten für das Diagramm
+  const calculateAmortizationData = () => {
+    const financing = parseFormattedNumber(financingAmount)
+    const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+    const repaymentAmount = parseFormattedNumber(repaymentRateInput) // Euro-Betrag für Tilgungsdarlehen
+    const repaymentRateDecimal = parseFloat(repaymentRateInput.replace('%', '').replace(',', '.')) / 100 // Prozent für Annuitätendarlehen
+    const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+    
+    if (financing <= 0 || interestRateDecimal <= 0) {
+      return []
+    }
+
+    // Prüfe je nach Darlehensart
+    if (loanType === 'Tilgung' && parseFormattedNumber(repaymentRateInput) <= 0) {
+      return []
+    } else if (loanType !== 'Tilgung' && repaymentRateDecimal <= 0) {
+      return []
+    }
+
+    const monthlyInterestRate = interestRateDecimal / 12
+    let remainingDebt = financing
+    const data = []
+
+    // Berechne für die ersten 12 Jahre (144 Monate)
+    for (let month = 1; month <= 144 && remainingDebt > 0; month++) {
+      const monthlyInterestAmount = remainingDebt * monthlyInterestRate
+      let monthlyPrincipalAmount
+      
+      if (loanType === 'Tilgung') {
+        // Bei Tilgungsdarlehen: Konstante monatliche Tilgung
+        monthlyPrincipalAmount = Math.min(
+          parseFormattedNumber(repaymentRateInput),
+          remainingDebt
+        )
+      } else {
+        // Bei Annuitätendarlehen: Tilgung basierend auf Prozentsatz
+        monthlyPrincipalAmount = Math.min(
+          (financing * repaymentRateDecimal) / 12,
+          remainingDebt
+        )
+      }
+      
+      remainingDebt = Math.max(0, remainingDebt - monthlyPrincipalAmount)
+      
+      data.push({
+        month: month,
+        year: Math.ceil(month / 12),
+        zinsen: Math.round(monthlyInterestAmount),
+        tilgung: Math.round(monthlyPrincipalAmount),
+        restschuld: Math.round(remainingDebt),
+      })
+    }
+
+    return data
   }
 
   const formatNumber = (num: string) => {
@@ -318,6 +514,15 @@ function Rechner() {
       setManualRentPrice('')
     } else {
       setManualRentPrice(formatNumber(value))
+    }
+  }
+
+  const handleRemainingDebtChange = (value: string) => {
+    // Wenn der Wert leer ist oder nur Leerzeichen enthält, setze leeren String
+    if (!value || value.trim() === '') {
+      setRemainingDebtInput('')
+    } else {
+      setRemainingDebtInput(formatNumber(value))
     }
   }
 
@@ -503,8 +708,8 @@ function Rechner() {
                       />
                     </Box>
 
-                    {/* Dritte Zeile: Editierbare Berechnungsfelder */}
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+                    {/* Dritte Zeile: Eigenkapital und Finanzierungsbetrag */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
                       <TextField
                         fullWidth
                         label="Eigenkapital"
@@ -537,10 +742,36 @@ function Rechner() {
                           },
                         }}
                       />
+                    </Box>
+
+                    {/* Vierte Zeile: Darlehensart, Zinssatz, Tilgungssatz, Annuität und Zinsbindung */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: loanType === 'Tilgung' ? 'repeat(5, 1fr)' : 'repeat(5, 1fr)' }, gap: 2 }}>
+                      <FormControl fullWidth>
+                        <InputLabel>Darlehensart</InputLabel>
+                        <Select
+                          value={loanType}
+                          onChange={(e) => setLoanType(e.target.value)}
+                          label="Darlehensart"
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            },
+                            '& .MuiSelect-select': {
+                              py: 2,
+                              px: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }
+                          }}
+                        >
+                          <MenuItem value="Annuitätendarlehen">Annuität</MenuItem>
+                          <MenuItem value="Tilgung">Tilgung</MenuItem>
+                        </Select>
+                      </FormControl>
 
                       <TextField
                         fullWidth
-                        label="Zinssatz"
+                        label={loanType === 'Tilgung' ? 'Zinssatz' : 'Anf. Zinssatz'}
                         value={interestRate}
                         onChange={(e) => setInterestRate(e.target.value)}
                         InputLabelProps={{
@@ -558,21 +789,92 @@ function Rechner() {
 
                       <TextField
                         fullWidth
-                        label="Tilgungssatz"
+                        label={loanType === 'Tilgung' ? 'Tilgung p.M.' : 'Anf. Tilgung'}
                         value={repaymentRateInput}
-                        onChange={(e) => setRepaymentRateInput(e.target.value)}
+                        onChange={(e) => {
+                          setRepaymentRateInput(e.target.value)
+                          setLastEdited('repayment')
+                        }}
                         InputLabelProps={{
                           shrink: true,
                         }}
                         InputProps={{
-                          endAdornment: <InputAdornment position="end"><Percent /></InputAdornment>,
+                          startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
                         }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: 'rgba(0, 0, 0, 0.04)',
                           },
+                          '& .MuiInputBase-input[readonly]': {
+                            backgroundColor: '#f0f0f0', // Leichter grauer Hintergrund für readonly
+                            color: 'text.secondary',
+                          },
                         }}
                       />
+
+                      {loanType !== 'Tilgung' && (
+                        <TextField
+                          fullWidth
+                          label="Annuität"
+                          value={annuityInput}
+                          onChange={(e) => {
+                            setAnnuityInput(e.target.value)
+                            setLastEdited('annuity')
+                          }}
+                          InputLabelProps={{
+                            shrink: true,
+                          }}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            },
+                          }}
+                        />
+                      )}
+
+                      <TextField
+                        fullWidth
+                        label="Zinsbindung"
+                        placeholder="z.B. 10"
+                        value={runtime}
+                        onChange={(e) => {
+                          setRuntime(e.target.value)
+                          setLastEdited('runtime')
+                        }}
+                        InputProps={{
+                          endAdornment: <InputAdornment position="end">Jahre</InputAdornment>,
+                        }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                          },
+                          '& .MuiInputBase-input[readonly]': {
+                            backgroundColor: '#f0f0f0', // Leichter grauer Hintergrund für readonly
+                            color: 'text.secondary',
+                          },
+                        }}
+                      />
+
+                      {loanType === 'Tilgung' && (
+                        <TextField
+                          fullWidth
+                          label="Restschuld"
+                          value={remainingDebtInput}
+                          onChange={(e) => handleRemainingDebtChange(e.target.value)}
+                          placeholder="Optional eingeben"
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start"><Euro /></InputAdornment>,
+                          }}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                            },
+                          }}
+                        />
+                      )}
                     </Box>
                   </Stack>
                 </CardContent>
@@ -586,9 +888,40 @@ function Rechner() {
                 <Box sx={{ flex: 1 }}>
                   <Card>
                     <CardContent sx={{ p: 2 }}>
-                      <Typography variant="h6" sx={{ textAlign: 'center', mb: 1 }}>
-                        Monatliche Annuität
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 1, gap: 2 }}>
+                        <Typography variant="h6">
+                          Monatliche Annuität
+                        </Typography>
+                        <TextField
+                          label="Monat"
+                          type="number"
+                          value={selectedMonth}
+                          onChange={(e) => {
+                            const maxMonths = (parseFormattedNumber(runtime) || 0) * 12
+                            if (maxMonths === 0) {
+                              setSelectedMonth('')
+                              return
+                            }
+                            const value = e.target.value
+                            const numericValue = parseInt(value, 10)
+
+                            if (value === '') {
+                              setSelectedMonth('')
+                            } else if (!isNaN(numericValue) && numericValue >= 1 && numericValue <= maxMonths) {
+                              setSelectedMonth(value)
+                            }
+                            // Otherwise, do nothing, preventing the input from changing
+                          }}
+                          size="small"
+                          sx={{ width: 100 }}
+                          InputProps={{
+                            inputProps: {
+                              min: 1,
+                              max: (parseFormattedNumber(runtime) || 0) * 12,
+                            },
+                          }}
+                        />
+                      </Box>
 
                       <Stack spacing={0.5}>
                         {/* Zinsen pro Monat */}
@@ -597,17 +930,17 @@ function Rechner() {
                             Zinsen pro Monat:
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {formatCurrency(monthlyInterest)}
+                            {formatCurrency(specificMonthInterest)}
                           </Typography>
                         </Box>
 
-                        {/* Tilgung pro Monat */}
+                        {/* Tilgung p.M. */}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="body2" color="text.secondary">
-                            Tilgung pro Monat:
+                            Tilgung p.M.:
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {formatCurrency(monthlyPrincipal)}
+                            {formatCurrency(specificMonthPrincipal)}
                           </Typography>
                         </Box>
 
@@ -620,7 +953,11 @@ function Rechner() {
                             Gesamtannuität:
                           </Typography>
                           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {formatCurrency(monthlyAnnuity)}
+                            {formatCurrency(
+                              loanType === 'Tilgung'
+                                ? specificMonthInterest + specificMonthPrincipal
+                                : monthlyAnnuity
+                            )}
                           </Typography>
                         </Box>
                       </Stack>
@@ -772,6 +1109,42 @@ function Rechner() {
                         />
                       </Box>
 
+                      {/* Cashflow gesamt */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Cashflow gesamt:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                              ? parseFormattedNumber(manualRentPrice)
+                              : parseFormattedNumber(autoRentPrice)
+                            const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                            const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                            const annualCashflow = monthlyCashflow * 12
+                            const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                            const totalCashflow = annualCashflow * runtimeYears
+                            return formatCurrency(totalCashflow)
+                          })()}
+                        </Typography>
+                      </Box>
+
+                      {/* Trennlinie */}
+                      <Box sx={{ borderTop: 1, borderColor: 'divider', my: 1.5 }} />
+
+                      {/* Verkaufspreis */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Verkaufspreis:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {(() => {
+                            const price = parseFormattedNumber(purchasePrice)
+                            return formatCurrency(price)
+                          })()}
+                        </Typography>
+                      </Box>
+
                       {/* Restschuld */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
@@ -795,19 +1168,6 @@ function Rechner() {
                               return formatCurrency(Math.round(remainingDebt))
                             }
                             return formatCurrency(0)
-                          })()}
-                        </Typography>
-                      </Box>
-
-                      {/* Verkaufspreis */}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Verkaufspreis:
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {(() => {
-                            const price = parseFormattedNumber(purchasePrice)
-                            return formatCurrency(price)
                           })()}
                         </Typography>
                       </Box>
@@ -848,7 +1208,35 @@ function Rechner() {
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
                           Gesamtertrag:
                         </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#22c55e' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
+                          const salePrice = parseFormattedNumber(purchasePrice)
+                          const financing = parseFormattedNumber(financingAmount)
+                          const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                          const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                          const monthlyRate = monthlyAnnuity
+
+                          // Cashflow p.A. berechnen
+                          const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                            ? parseFormattedNumber(manualRentPrice)
+                            : parseFormattedNumber(autoRentPrice)
+                          const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                          const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                          const annualCashflow = monthlyCashflow * 12
+
+                          let totalReturn = 0
+                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                            const monthlyInterestRate = interestRateDecimal / 12
+                            const totalMonths = 12 * runtimeYears
+                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                            const netProceeds = salePrice - Math.round(remainingDebt)
+                            totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                          } else {
+                            totalReturn = salePrice + (annualCashflow * runtimeYears)
+                          }
+
+                          return totalReturn < 0 ? '#ef4444' : '#22c55e'
+                        })() }}>
                           {(() => {
                             const salePrice = parseFormattedNumber(purchasePrice)
                             const financing = parseFormattedNumber(financingAmount)
@@ -870,8 +1258,6 @@ function Rechner() {
                               const totalMonths = 12 * runtimeYears
                               const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
                               const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                              
-                              // Nettoerlös = Verkaufspreis - Restschuld
                               const netProceeds = salePrice - Math.round(remainingDebt)
                               
                               // Gesamtertrag = Nettoerlös + (Cashflow p.a. * Laufzeit)
@@ -889,7 +1275,50 @@ function Rechner() {
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
                           CAGR:
                         </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#22c55e' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
+                          const salePrice = parseFormattedNumber(purchasePrice)
+                          const financing = parseFormattedNumber(financingAmount)
+                          const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                          const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                          const monthlyRate = monthlyAnnuity
+                          const eigenkapital = parseFormattedNumber(downPayment)
+
+                          const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                            ? parseFormattedNumber(manualRentPrice)
+                            : parseFormattedNumber(autoRentPrice)
+                          const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                          const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                          const annualCashflow = monthlyCashflow * 12
+
+                          let totalReturn = 0
+                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                            const monthlyInterestRate = interestRateDecimal / 12
+                            const totalMonths = 12 * runtimeYears
+                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                            const netProceeds = salePrice - Math.round(remainingDebt)
+                            totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                          } else {
+                            totalReturn = salePrice + (annualCashflow * runtimeYears)
+                          }
+
+                          if (totalReturn < 0) return '#ef4444'
+
+                          // CAGR berechnen für Farbbestimmung
+                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
+                            const monthlyInterestRate = interestRateDecimal / 12
+                            const totalMonths = 12 * runtimeYears
+                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                            const netProceeds = salePrice - Math.round(remainingDebt)
+                            const totalCashflows = annualCashflow * runtimeYears
+                            const calculatedTotalReturn = totalCashflows + netProceeds
+                            const cagr = Math.pow(calculatedTotalReturn / eigenkapital, 1 / runtimeYears) - 1
+                            return cagr < 0 ? '#ef4444' : '#22c55e'
+                          }
+
+                          return '#22c55e'
+                        })() }}>
                           {(() => {
                             const salePrice = parseFormattedNumber(purchasePrice)
                             const financing = parseFormattedNumber(financingAmount)
@@ -907,18 +1336,20 @@ function Rechner() {
                             const annualCashflow = monthlyCashflow * 12 // G15
 
                             if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
-                              // Restschuld berechnen
+                              // Prüfe Gesamtertrag
                               const monthlyInterestRate = interestRateDecimal / 12
                               const totalMonths = 12 * runtimeYears
                               const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
                               const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                              
-                              // Nettoerlös = Verkaufspreis - Restschuld (G19)
-                              const netProceeds = salePrice - Math.round(remainingDebt) // G19
-                              
+                              const netProceeds = salePrice - Math.round(remainingDebt)
+                              const totalCashflows = annualCashflow * runtimeYears
+                              const totalReturn = totalCashflows + netProceeds
+
+                              if (totalReturn < 0) {
+                                return '-'
+                              }
+
                               // CAGR = POTENZ( (G15*G16 + G19) / B11 ; 1 / G16 ) - 1
-                              const totalCashflows = annualCashflow * runtimeYears // G15 * G16
-                              const totalReturn = totalCashflows + netProceeds // (G15*G16 + G19)
                               const cagr = Math.pow(totalReturn / eigenkapital, 1 / runtimeYears) - 1
                               
                               return (cagr * 100).toFixed(2) + '%'
@@ -933,7 +1364,84 @@ function Rechner() {
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
                           Effektive Rendite (IRR):
                         </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#22c55e' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: (() => {
+                          const salePrice = parseFormattedNumber(purchasePrice)
+                          const financing = parseFormattedNumber(financingAmount)
+                          const interestRateDecimal = parseFloat(interestRate.replace('%', '').replace(',', '.')) / 100
+                          const runtimeYears = parseFloat(runtime.replace(',', '.')) || 0
+                          const monthlyRate = monthlyAnnuity
+                          const eigenkapital = parseFormattedNumber(downPayment)
+
+                          const rentPrice = manualRentPrice && manualRentPrice.trim() !== '' 
+                            ? parseFormattedNumber(manualRentPrice)
+                            : parseFormattedNumber(autoRentPrice)
+                          const nonApportionableValue = parseFormattedNumber(nonApportionable)
+                          const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
+                          const annualCashflow = monthlyCashflow * 12
+
+                          let totalReturn = 0
+                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0) {
+                            const monthlyInterestRate = interestRateDecimal / 12
+                            const totalMonths = 12 * runtimeYears
+                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                            const netProceeds = salePrice - Math.round(remainingDebt)
+                            totalReturn = netProceeds + (annualCashflow * runtimeYears)
+                          } else {
+                            totalReturn = salePrice + (annualCashflow * runtimeYears)
+                          }
+
+                          if (totalReturn < 0) return '#ef4444'
+
+                          // IRR berechnen für Farbbestimmung
+                          if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
+                            const monthlyInterestRate = interestRateDecimal / 12
+                            const totalMonths = 12 * runtimeYears
+                            const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
+                            const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
+                            const netProceeds = salePrice - Math.round(remainingDebt)
+
+                            // IRR Berechnung über Newton-Raphson Verfahren
+                            const calculateIRR = (cashflows: number[], guess = 0.1) => {
+                              const maxIterations = 100
+                              const tolerance = 1e-6
+                              
+                              for (let i = 0; i < maxIterations; i++) {
+                                let npv = 0
+                                let dnpv = 0
+                                
+                                for (let t = 0; t < cashflows.length; t++) {
+                                  const factor = Math.pow(1 + guess, t)
+                                  npv += cashflows[t] / factor
+                                  if (t > 0) {
+                                    dnpv -= t * cashflows[t] / Math.pow(1 + guess, t + 1)
+                                  }
+                                }
+                                
+                                if (Math.abs(npv) < tolerance) return guess
+                                
+                                const newGuess = guess - npv / dnpv
+                                if (Math.abs(newGuess - guess) < tolerance) return newGuess
+                                
+                                guess = newGuess
+                              }
+                              
+                              return guess
+                            }
+                            
+                            // Cashflow Array erstellen
+                            const cashflows = [-eigenkapital] // Jahr 0: Investition
+                            for (let year = 1; year < runtimeYears; year++) {
+                              cashflows.push(annualCashflow) // Jahre 1 bis n-1: jährlicher Cashflow
+                            }
+                            cashflows.push(annualCashflow + netProceeds) // Jahr n: Cashflow + Verkaufserlös
+                            
+                            const irr = calculateIRR(cashflows)
+                            return irr < 0 ? '#ef4444' : '#22c55e'
+                          }
+
+                          return '#22c55e'
+                        })() }}>
                           {(() => {
                             const salePrice = parseFormattedNumber(purchasePrice)
                             const financing = parseFormattedNumber(financingAmount)
@@ -948,17 +1456,21 @@ function Rechner() {
                               : parseFormattedNumber(autoRentPrice)
                             const nonApportionableValue = parseFormattedNumber(nonApportionable)
                             const monthlyCashflow = rentPrice - monthlyAnnuity - nonApportionableValue
-                            const annualCashflow = monthlyCashflow * 12
+                            const annualCashflow = monthlyCashflow * 12 // G15
 
                             if (financing > 0 && interestRateDecimal > 0 && runtimeYears > 0 && monthlyRate > 0 && eigenkapital > 0) {
-                              // Restschuld berechnen
+                              // Prüfe Gesamtertrag
                               const monthlyInterestRate = interestRateDecimal / 12
                               const totalMonths = 12 * runtimeYears
                               const factor = Math.pow(1 + monthlyInterestRate, totalMonths)
                               const remainingDebt = financing * factor - monthlyRate * ((factor - 1) / monthlyInterestRate)
-                              
-                              // Nettoerlös = Verkaufspreis - Restschuld
                               const netProceeds = salePrice - Math.round(remainingDebt)
+                              const totalCashflows = annualCashflow * runtimeYears
+                              const totalReturn = totalCashflows + netProceeds
+
+                              if (totalReturn < 0) {
+                                return '-'
+                              }
                               
                               // IRR Berechnung über Newton-Raphson Verfahren
                               // Cashflows: Jahr 0: -Eigenkapital, Jahre 1-n: annualCashflow, Jahr n: annualCashflow + netProceeds

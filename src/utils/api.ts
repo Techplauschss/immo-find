@@ -1,5 +1,5 @@
 // Utility for building API URLs that supports a production base URL
-// If VITE_API_BASE_URL is set (e.g. https://immo-find-api.onrender.com),
+// If VITE_API_BASE_URL is set (e.g. https://immo-find-api.vercel.app),
 // we build absolute URLs against it. Otherwise we fall back to the dev proxy '/api'.
 
 const RAW_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined

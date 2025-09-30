@@ -6,10 +6,6 @@ import App from './App.tsx'
 import Rechner from './Rechner.tsx'
 import SettingsPanel from './SettingsPanel.tsx'
 import { CitySettingsProvider } from './contexts/CitySettingsContext.tsx'
-import { backgroundWakeup } from './utils/apiWakeup'
-
-// Starte API Wake-up im Hintergrund beim App-Start
-backgroundWakeup()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
