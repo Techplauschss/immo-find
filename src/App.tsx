@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Container,
@@ -19,7 +19,9 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Switch,
+  FormControlLabel
 } from '@mui/material'
 import {
   Search,
@@ -30,7 +32,9 @@ import {
 import './App.css'
 import CalculatorIcon from './CalculatorIcon'
 import SearchIcon from './SearchIcon'
-import CashflowChip, { getCashflowValue } from './CashflowChip'
+import CashflowChip from './CashflowChip'
+import { useCitySettings } from './contexts/CitySettingsContext'
+
 
 // Types
 interface Listing {
@@ -139,6 +143,7 @@ const theme = createTheme({
 
 function App() {
   const navigate = useNavigate()
+  const { getRentPerSqm, settings } = useCitySettings()
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [minArea, setMinArea] = useState('')
@@ -334,10 +339,51 @@ function App() {
     }
   }, [showOnlyPositiveCashflow])
 
-  const sortListings = (listingsToSort: Listing[]) => {
-    if (!sortBy) return listingsToSort
+  const getCashflow = (listing: Listing): number => {
+    try {
+      const kaufpreis = parseInt(listing.price.replace(/[€.,\s]/g, ''))
+      const flaeche = parseFloat(listing.qm.replace(',', '.'))
 
-    return [...listingsToSort].sort((a, b) => {
+      if (isNaN(kaufpreis) || isNaN(flaeche) || flaeche === 0) return -999999
+
+      const city = getCityFromZipCode(zipCode)
+
+      let mieteinnahmen: number
+      if (listing.foundRentValue && listing.foundRentValue > 0) {
+        mieteinnahmen = listing.foundRentValue
+      } else {
+        const mietpreisProQm = getRentPerSqm(city)
+        mieteinnahmen = mietpreisProQm * flaeche
+      }
+
+      const eigenkapital = 10000
+      const darlehen = kaufpreis - eigenkapital
+      const zinssatz = settings.loanDefaults.interestRate / 100
+      const tilgungssatz = settings.loanDefaults.repaymentRate / 100
+      const gesamtrate = zinssatz + tilgungssatz
+      const annuitaetProMonat = (darlehen * gesamtrate) / 12
+
+      const nichtUmlagefahigeKostenProMonat = (kaufpreis * 0.015) / 12
+
+      const cashflow = mieteinnahmen - annuitaetProMonat - nichtUmlagefahigeKostenProMonat
+
+      return Math.round(cashflow)
+    } catch (error) {
+      console.error("Error calculating cashflow for filter:", error)
+      return -999999
+    }
+  }
+
+  const filteredListings = useMemo(() => {
+    if (!showOnlyPositiveCashflow) return listings
+    return listings.filter(listing => getCashflow(listing) >= 0)
+  }, [listings, showOnlyPositiveCashflow, settings, zipCode])
+
+
+  const sortedListings = useMemo(() => {
+    if (!sortBy) return filteredListings
+
+    return [...filteredListings].sort((a, b) => {
       const priceA = parseInt(a.price.replace(/[€.,\s]/g, ''))
       const priceB = parseInt(b.price.replace(/[€.,\s]/g, ''))
       const qmA = parseFloat(a.qm.replace(',', '.'))
@@ -360,16 +406,8 @@ function App() {
           return 0
       }
     })
-  }
+  }, [filteredListings, sortBy])
 
-  const filterListings = (listingsToFilter: Listing[]) => {
-    if (!showOnlyPositiveCashflow) return listingsToFilter
-    
-    return listingsToFilter.filter(listing => {
-      const cashflowValue = getCashflowValue(listing.price, listing.qm, getCityFromZipCode(zipCode))
-      return cashflowValue >= 0
-    })
-  }
 
   const fetchAveragePrice = async (zipCode: string) => {
     if (!zipCode || zipCode.length < 5) {
@@ -495,7 +533,7 @@ function App() {
       }
       
       // Filter listings
-      const filteredListings = data.listings.filter(listing => {
+      const filteredByApi = data.listings.filter(listing => {
         // Skip listings with missing price or qm
         if (!listing.price || !listing.qm) return false
         
@@ -536,7 +574,7 @@ function App() {
       })
       
       // Restore found rent values for the new listings
-      const restoredListings = restoreFoundRentValues(filteredListings)
+      const restoredListings = restoreFoundRentValues(filteredByApi)
       setListings(restoredListings)
       
       // Save search data to localStorage for reload persistence
@@ -553,7 +591,7 @@ function App() {
       }
       
       saveSearchData({
-        listings: filteredListings,
+        listings: restoredListings,
         searchParams,
         sortBy,
         showOnlyPositiveCashflow
@@ -930,14 +968,28 @@ function App() {
                 >
                   <Typography variant="h5" component="h3" color="white">
                     {!loading && (
-                      filterListings(listings).length > 0 
-                        ? `${filterListings(listings).length} Immobilien gefunden` 
+                      filteredListings.length > 0 
+                        ? `${filteredListings.length} Immobilien gefunden` 
                         : 'Keine Immobilien gefunden'
                     )}
                   </Typography>
 
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
 
+                    {/* Cashflow Filter */}
+                    {listings.length > 0 && (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={showOnlyPositiveCashflow}
+                            onChange={(e) => setShowOnlyPositiveCashflow(e.target.checked)}
+                            color="primary"
+                          />
+                        }
+                        label="Nur positive Cashflows"
+                        sx={{ color: 'white' }}
+                      />
+                    )}
 
                     {/* Sorting Dropdown */}
                     {listings.length > 0 && (
@@ -976,7 +1028,7 @@ function App() {
                   </Stack>
                 </Stack>
 
-                {filterListings(listings).length > 0 && (
+                {sortedListings.length > 0 && (
                   <Box 
                     sx={{ 
                       display: 'grid', 
@@ -988,9 +1040,9 @@ function App() {
                       gap: 3 
                     }}
                   >
-                    {sortListings(filterListings(listings)).map((listing, index) => {
+                    {sortedListings.map((listing, index) => {
                       // Calculate cashflow to determine card styling
-                      const cashflowValue = getCashflowValue(listing.price, listing.qm, getCityFromZipCode(zipCode))
+                      const cashflowValue = getCashflow(listing)
                       const isNegativeCashflow = cashflowValue < 0
                       
                       return (
