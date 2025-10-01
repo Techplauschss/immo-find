@@ -12,7 +12,7 @@ interface CashflowChipProps {
 }
 
 const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowValue, customRentValue }) => {
-  const { getRentPerSqm } = useCitySettings()
+  const { getRentPerSqm, settings } = useCitySettings()
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -44,8 +44,8 @@ const CashflowChip: React.FC<CashflowChipProps> = ({ price, qm, city, cashflowVa
       // 2. Annuität berechnen
       const eigenkapital = 10000
       const darlehen = kaufpreis - eigenkapital
-      const zinssatz = 0.02 // 2% p.A.
-      const tilgungssatz = 0.02 // 2% p.A.
+      const zinssatz = settings.loanDefaults.interestRate / 100 // 2% p.A.
+      const tilgungssatz = settings.loanDefaults.repaymentRate / 100 // 2% p.A.
       const gesamtrate = zinssatz + tilgungssatz // 4% p.A.
       const annuitaetProMonat = (darlehen * gesamtrate) / 12
       
