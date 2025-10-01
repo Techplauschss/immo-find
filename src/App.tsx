@@ -19,15 +19,14 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  Switch,
-  FormControlLabel
+  MenuItem
 } from '@mui/material'
 import {
   Search,
   Euro,
   SquareFoot,
-  LocationOn
+  LocationOn,
+  TrendingUp
 } from '@mui/icons-material'
 import './App.css'
 import CalculatorIcon from './CalculatorIcon'
@@ -978,17 +977,22 @@ function App() {
 
                     {/* Cashflow Filter */}
                     {listings.length > 0 && (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={showOnlyPositiveCashflow}
-                            onChange={(e) => setShowOnlyPositiveCashflow(e.target.checked)}
-                            color="primary"
-                          />
-                        }
-                        label="Nur positive Cashflows"
-                        sx={{ color: 'white' }}
-                      />
+                      <Button
+                        variant={showOnlyPositiveCashflow ? 'contained' : 'outlined'}
+                        onClick={() => setShowOnlyPositiveCashflow(!showOnlyPositiveCashflow)}
+                        startIcon={<TrendingUp />}
+                        sx={{
+                          color: 'white',
+                          borderColor: 'rgba(255, 255, 255, 0.5)',
+                          backgroundColor: showOnlyPositiveCashflow ? '#16a34a' : 'transparent',
+                          '&:hover': {
+                            borderColor: 'white',
+                            backgroundColor: showOnlyPositiveCashflow ? '#15803d' : 'rgba(255, 255, 255, 0.1)',
+                          },
+                        }}
+                      >
+                        Nur positive Cashflows
+                      </Button>
                     )}
 
                     {/* Sorting Dropdown */}
